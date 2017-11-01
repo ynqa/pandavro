@@ -1,0 +1,20 @@
+language: python
+
+python:
+  - 3.5
+  - 3.6
+
+install:
+  - pip install -e .[tests]
+
+script:
+  - pytest -v tests
+
+deploy:
+  provider: pypi
+  user: pyncha
+  password:
+    secure: uUnHL4IELVzsQK6YiXTCkSwNxA8J+ORuqNzVuAR5CeJvtvcUGTZMtgErxHyevI+aSNZhohicNrD2MzJ2oF5YiEm+tJh7J2Chrumqrqc/Ut6Rgb4JtyMNe5hO7+1jiTVgZdkD1BoNVPHq/d/bdpWOg9hOtILawzF2R6+FaTwHGbbXJUgSdXkYfQXxYKTCW3fvNj7Lv5PY06Gus3wCWPnU4QpXYfrX0KZzNeyngU0TKmqLPTsL0DSdyG7N+FkVid5qy5rTHTaiR3WYOKOfq+JsHBUHFeWFOHzIhCfRZgSp3iTyrRtIc8obqJ7tZcYbykVXM0KyG53AtDzc0KORTiIEvExP10x6GKj7wBCjkWLyBoeTMHw22vzKnya0H5xZY3OCxdsLg3jOjyFdtR4PSKfRIYU++gA20q3hODicTIqSElc9o6F3lxqITe+w0+I1Q5pvfSq8vARbtlQ1NFY6Mn/yb+g3ilfMPiqs2pVCTCeBZaytis6sq0VdsqUYva32ujkej+r8rvUSGXiDLdKr1PSCpBmHrRP8iHssDpKqgOr7vXfcESnkwCFWhbGwjzdjPxSCGCZR8gBZAqJttylB3JkerT1QBWSdU2460euas4CV7MF2mp3eDaUtJt9WgWo6D/X7XiBnAwTHnmVrHD7/ijIBoMEVgn1yKX90IQ374H5gZQ4=
+  on:
+    branch: master
+    python: 3.6
