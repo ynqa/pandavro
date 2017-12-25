@@ -4,6 +4,7 @@ import pandas as pd
 import pandavro as pdx
 from tempfile import NamedTemporaryFile
 from pandas.util.testing import assert_frame_equal
+from io import BytesIO
 
 
 @pytest.fixture
@@ -40,7 +41,15 @@ def test_fields_infer(dataframe):
     assert expect == pdx.__fields_infer(dataframe)
 
 
-def test_e2e(dataframe):
+def test_buffer_e2e(dataframe):
+    tf = NamedTemporaryFile()
+    pdx.to_avro(tf.name, dataframe)
+    with open(tf.name, 'rb') as f:
+        expect = pdx.from_avro(BytesIO(f.read()))
+    assert_frame_equal(expect, dataframe)
+
+
+def test_file_path_e2e(dataframe):
     tf = NamedTemporaryFile()
     pdx.to_avro(tf.name, dataframe)
     expect = pdx.from_avro(tf.name)
