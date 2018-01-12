@@ -39,21 +39,27 @@ def __schema_infer(df):
     return schema
 
 
-def from_avro(file_path, schema=None):
+def __file_to_dataframe(f, schema):
+    reader = fastavro.reader(f, reader_schema=schema)
+    return pd.DataFrame.from_records(list(reader))
+
+
+def from_avro(file_path_or_buffer, schema=None):
     """
     Avro file reader.
 
     Args:
-        file_path: Input file path.
+        file_path_or_buffer: Input file path or file-like object.
         schema: Avro schema.
 
     Returns:
         Class of pd.DataFrame.
     """
-
-    with open(file_path, 'rb') as f:
-        reader = fastavro.reader(f, reader_schema=schema)
-        return pd.DataFrame.from_records(list(reader))
+    if isinstance(file_path_or_buffer, str):
+        with open(file_path_or_buffer, 'rb') as f:
+            return __file_to_dataframe(f, schema)
+    else:
+        return __file_to_dataframe(file_path_or_buffer, schema)
 
 
 def to_avro(file_path, df, schema=None):
