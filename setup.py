@@ -5,7 +5,7 @@ setup(
     name='pandavro',
     version='1.1.0',
     description='The interface between Avro and pandas DataFrame',
-    url='https://github.com/ynqa/pandabro',
+    url='https://github.com/ynqa/pandavro',
     author='Makoto Ito',
     author_email='un.pensiero.vano@gmail.com',
     license='MIT',
