@@ -44,7 +44,7 @@ def __file_to_dataframe(f, schema):
     return pd.DataFrame.from_records(list(reader))
 
 
-def from_avro(file_path_or_buffer, schema=None):
+def read_avro(file_path_or_buffer, schema=None):
     """
     Avro file reader.
 
@@ -60,6 +60,22 @@ def from_avro(file_path_or_buffer, schema=None):
             return __file_to_dataframe(f, schema)
     else:
         return __file_to_dataframe(file_path_or_buffer, schema)
+
+
+def from_avro(file_path_or_buffer, schema=None):
+    """
+    Avro file reader.
+
+    Delegates to the `read_avro` method to remain backward compatible.
+
+    Args:
+        file_path_or_buffer: Input file path or file-like object.
+        schema: Avro schema.
+
+    Returns:
+        Class of pd.DataFrame.
+    """
+    return read_avro(file_path_or_buffer, schema)
 
 
 def to_avro(file_path, df, schema=None):
