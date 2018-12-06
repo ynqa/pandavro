@@ -9,10 +9,10 @@ from io import BytesIO
 
 @pytest.fixture
 def dataframe():
-    return pd.DataFrame({"String": ['foo', 'bar', 'foo', 'bar', 'foo', 'bar', 'foo', 'bar'],
+    return pd.DataFrame({"Boolean": [True, False, True, False, True, False, True, False],
                          "Float64": np.random.randn(8),
                          "Int64": np.random.randint(0, 10, 8),
-                         "Boolean": [True, False, True, False, True, False, True, False]
+                         "String": ['foo', 'bar', 'foo', 'bar', 'foo', 'bar', 'foo', 'bar']
                          })
 
 
