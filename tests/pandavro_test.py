@@ -45,11 +45,18 @@ def test_buffer_e2e(dataframe):
     tf = NamedTemporaryFile()
     pdx.to_avro(tf.name, dataframe)
     with open(tf.name, 'rb') as f:
-        expect = pdx.from_avro(BytesIO(f.read()))
+        expect = pdx.read_avro(BytesIO(f.read()))
     assert_frame_equal(expect, dataframe)
 
 
 def test_file_path_e2e(dataframe):
+    tf = NamedTemporaryFile()
+    pdx.to_avro(tf.name, dataframe)
+    expect = pdx.read_avro(tf.name)
+    assert_frame_equal(expect, dataframe)
+
+
+def test_delegation(dataframe):
     tf = NamedTemporaryFile()
     pdx.to_avro(tf.name, dataframe)
     expect = pdx.from_avro(tf.name)

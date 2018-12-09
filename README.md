@@ -16,7 +16,7 @@ $ pip install pandavro
 
 It prepares like pandas APIs:
 
-- `from_avro`
+- `read_avro`
     - Read the records from Avro file and fit them into pandas DataFrame using [fastavro](https://github.com/tebeka/fastavro).
 - `to_avro`
     - Write the rows of pandas DataFrame to Avro file with the original schema infer.
@@ -28,7 +28,7 @@ import pandavro as pdx
 
 
 def main():
-    weather = pdx.from_avro('weather.avro')
+    weather = pdx.read_avro('weather.avro')
 
     print(weather)
 
