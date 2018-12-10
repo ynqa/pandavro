@@ -63,5 +63,25 @@ def test_delegation(dataframe):
     assert_frame_equal(expect, dataframe)
 
 
+def test_dataframe_kwargs(dataframe):
+    tf = NamedTemporaryFile()
+    pdx.to_avro(tf.name, dataframe)
+    # include columns
+    columns = ['Boolean', 'Int64']
+    expect = pdx.read_avro(tf.name, columns=columns)
+    df = dataframe[columns]
+    assert_frame_equal(expect, df)
+    # exclude columns
+    columns = ['String', 'Boolean']
+    expect = pdx.read_avro(tf.name, exclude=columns)
+    df = dataframe.drop(columns, axis=1)
+    assert_frame_equal(expect, df)
+    # specify index
+    index = 'String'
+    expect = pdx.read_avro(tf.name, index=index)
+    df = dataframe.set_index(index)
+    assert_frame_equal(expect, df)
+
+
 if __name__ == '__main__':
     pytest.main()
