@@ -39,30 +39,31 @@ def __schema_infer(df):
     return schema
 
 
-def __file_to_dataframe(f, schema):
+def __file_to_dataframe(f, schema, **kwargs):
     reader = fastavro.reader(f, reader_schema=schema)
-    return pd.DataFrame.from_records(list(reader))
+    return pd.DataFrame.from_records(list(reader), **kwargs)
 
 
-def read_avro(file_path_or_buffer, schema=None):
+def read_avro(file_path_or_buffer, schema=None, **kwargs):
     """
     Avro file reader.
 
     Args:
         file_path_or_buffer: Input file path or file-like object.
         schema: Avro schema.
+        **kwargs: Keyword argument to pandas.DataFrame.from_records.
 
     Returns:
         Class of pd.DataFrame.
     """
     if isinstance(file_path_or_buffer, str):
         with open(file_path_or_buffer, 'rb') as f:
-            return __file_to_dataframe(f, schema)
+            return __file_to_dataframe(f, schema, **kwargs)
     else:
-        return __file_to_dataframe(file_path_or_buffer, schema)
+        return __file_to_dataframe(file_path_or_buffer, schema, **kwargs)
 
 
-def from_avro(file_path_or_buffer, schema=None):
+def from_avro(file_path_or_buffer, schema=None, **kwargs):
     """
     Avro file reader.
 
@@ -71,11 +72,12 @@ def from_avro(file_path_or_buffer, schema=None):
     Args:
         file_path_or_buffer: Input file path or file-like object.
         schema: Avro schema.
+        **kwargs: Keyword argument to pandas.DataFrame.from_records.
 
     Returns:
         Class of pd.DataFrame.
     """
-    return read_avro(file_path_or_buffer, schema)
+    return read_avro(file_path_or_buffer, schema, **kwargs)
 
 
 def to_avro(file_path, df, schema=None):
