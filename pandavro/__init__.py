@@ -3,12 +3,6 @@ import numpy as np
 import pandas as pd
 
 
-def __logical_type_infer(t: np.dtype):
-    if t == np.datetime64[ns]:
-        return 'timestamp-micros'
-    return None
-
-
 def __type_infer(t: np.dtype):
     if t == np.bool_:
         return 'boolean'
@@ -23,9 +17,9 @@ def __type_infer(t: np.dtype):
     elif t == np.object:
         # TODO: Dealing with the case of collection.
         return 'string'
-    elif t == np.dtype('datetime64[ns]'):
+    elif t.type == np.datetime64 or t.type == pd.core.dtypes.dtypes.DatetimeTZDtypeType:
         # https://avro.apache.org/docs/current/spec.html#Timestamp+%28microsecond+precision%29)
-        return 'long'
+        return {'type': 'long', 'logicalType': 'timestamp-micros'}
     else:
         raise TypeError('Invalid type: {}'.format(t))
 
@@ -34,11 +28,7 @@ def __fields_infer(df: pd.DataFrame):
     fields = []
     for key, type_np in df.dtypes.iteritems():
         type_avro = __type_infer(type_np)
-        schema = {'name': key, 'type': ['null', type_avro]}
-        logical_type_avro = __logical_type_infer(type_np)
-        if logical_type_avro is not None:
-            schema['logicalType'] = logical_type_avro
-        fields.append(schema)
+        fields.append({'name': key, 'type': ['null', type_avro]})
     return fields
 
 
