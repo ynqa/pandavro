@@ -1,6 +1,6 @@
 # Custom ignores
 .idea
-example/weather_out.avro
+example/example.avro
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
