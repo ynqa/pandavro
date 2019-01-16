@@ -17,6 +17,9 @@ def __type_infer(t: np.dtype):
     elif t == np.object:
         # TODO: Dealing with the case of collection.
         return 'string'
+    elif t.type == np.datetime64 or t.type == pd.core.dtypes.dtypes.DatetimeTZDtypeType:
+        # https://avro.apache.org/docs/current/spec.html#Timestamp+%28microsecond+precision%29)
+        return {'type': 'long', 'logicalType': 'timestamp-micros'}
     else:
         raise TypeError('Invalid type: {}'.format(t))
 
