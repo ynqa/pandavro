@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import six
 
+
 try:
     # Pandas <= 0.23
     from pandas.core.dtypes.dtypes import DatetimeTZDtypeType as DatetimeTZDtype
@@ -11,43 +12,48 @@ except ImportError:
     from pandas import DatetimeTZDtype
 
 
+DTYPE_TO_AVRO_TYPE = {
+    np.bool_: 'boolean',
+    np.int8: 'int',
+    np.int16: 'int',
+    np.int32: 'int',
+    np.uint8: 'int',
+    np.uint16: 'int',
+    np.uint32: 'int',
+    np.int64: 'long',
+    np.uint64: 'long',
+    np.object_: 'string',
+    np.unicode_: 'string',
+    np.float32: 'float',
+    np.float64: 'double',
+    np.datetime64: {'type': 'long', 'logicalType': 'timestamp-micros'},
+    DatetimeTZDtype: {'type': 'long', 'logicalType': 'timestamp-micros'},
+    np.void: 'binary',
+    np.bytes_: 'binary',
+}
+
+
 # Pandas 0.24 added support for nullable integers. Include those in the supported
 # integer dtypes if present, otherwise ignore them.
 try:
-    from pandas import (
-        Int8Dtype, Int16Dtype, Int32Dtype, Int64Dtype,
-        UInt8Dtype, UInt16Dtype, UInt32Dtype, UInt64Dtype
-    )
-
-    _PANDAS_INTEGER_DTYPES = (
-        Int8Dtype, Int16Dtype, Int32Dtype, UInt8Dtype, UInt16Dtype, UInt32Dtype
-    )
-    _PANDAS_LONG_DTYPES = (Int64Dtype, UInt64Dtype)
-except ImportError:
-    _PANDAS_INTEGER_DTYPES = ()
-    _PANDAS_LONG_DTYPES = ()
-
+    DTYPE_TO_AVRO_TYPE[pd.Int8Dtype] = 'int'
+    DTYPE_TO_AVRO_TYPE[pd.Int16Dtype] = 'int'
+    DTYPE_TO_AVRO_TYPE[pd.Int32Dtype] = 'int'
+    DTYPE_TO_AVRO_TYPE[pd.UInt8Dtype] = 'int'
+    DTYPE_TO_AVRO_TYPE[pd.UInt16Dtype] = 'int'
+    DTYPE_TO_AVRO_TYPE[pd.UInt32Dtype] = 'int'
+    DTYPE_TO_AVRO_TYPE[pd.UInt64Dtype] = 'long'
+    DTYPE_TO_AVRO_TYPE[pd.Int64Dtype] = 'long'
+except AttributeError:
+    pass
 
 
 def __type_infer(t):
-    if t is np.bool_:
-        return 'boolean'
-    elif t in (np.int8, np.int16, np.int32, np.uint8, np.uint16, np.uint32) + _PANDAS_INTEGER_DTYPES:
-        return 'int'
-    elif t in (np.int64, np.uint64) + _PANDAS_LONG_DTYPES:
-        return 'long'
-    elif t is np.float32:
-        return 'float'
-    elif t is np.float64:
-        return 'double'
-    elif t in (np.object_, np.unicode_):
-        # TODO: Dealing with the case of collection.
-        return 'string'
-    elif t.type in (np.datetime64, pd.DatetimeTZDtype):
-        # https://avro.apache.org/docs/current/spec.html#Timestamp+%28microsecond+precision%29)
-        return {'type': 'long', 'logicalType': 'timestamp-micros'}
-    else:
-        raise TypeError('Invalid type: {}'.format(t))
+    if t in DTYPE_TO_AVRO_TYPE:
+        return DTYPE_TO_AVRO_TYPE[t]
+    elif getattr(t, 'type', None) in DTYPE_TO_AVRO_TYPE:
+        return DTYPE_TO_AVRO_TYPE[t.type]
+    raise TypeError('Invalid type: {}'.format(t))
 
 
 def __fields_infer(df):
