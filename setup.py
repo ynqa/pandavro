@@ -14,8 +14,10 @@ setup(
         'fastavro>=0.14.7',
         'numpy',
         'pandas',
+        'six>=1.9',
     ],
     extras_require={
         'tests': ['pytest'],
     },
+    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*',
 )
