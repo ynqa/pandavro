@@ -1,32 +1,50 @@
 import fastavro
 import numpy as np
 import pandas as pd
+import six
+
+# Pandas 0.24 added support for nullable integers. Include those in the supported
+# integer dtypes if present, otherwise ignore them.
+try:
+    from pandas import (
+        Int8Dtype, Int16Dtype, Int32Dtype, Int64Dtype,
+        UInt8Dtype, UInt16Dtype, UInt32Dtype, UInt64Dtype
+    )
+
+    _PANDAS_INTEGER_DTYPES = (
+        Int8Dtype, Int16Dtype, Int32Dtype, UInt8Dtype, UInt16Dtype, UInt32Dtype
+    )
+    _PANDAS_LONG_DTYPES = (Int64Dtype, UInt64Dtype)
+except ImportError:
+    _PANDAS_INTEGER_DTYPES = ()
+    _PANDAS_LONG_DTYPES = ()
 
 
-def __type_infer(t: np.dtype):
-    if t == np.bool_:
+
+def __type_infer(t):
+    if t is np.bool_:
         return 'boolean'
-    elif t == (np.int8 or np.int16 or np.int32):
+    elif t in (np.int8, np.int16, np.int32, np.uint8, np.uint16, np.uint32) + _PANDAS_INTEGER_DTYPES:
         return 'int'
-    elif t == np.int64:
+    elif t in (np.int64, np.uint64) + _PANDAS_LONG_DTYPES:
         return 'long'
-    elif t == np.float32:
+    elif t is np.float32:
         return 'float'
-    elif t == np.float64:
+    elif t is np.float64:
         return 'double'
-    elif t == np.object:
+    elif t in (np.object_, np.unicode_):
         # TODO: Dealing with the case of collection.
         return 'string'
-    elif t.type == np.datetime64 or t.type == pd.core.dtypes.dtypes.DatetimeTZDtypeType:
+    elif t.type in (np.datetime64, pd.core.dtypes.dtypes.DatetimeTZDtypeType):
         # https://avro.apache.org/docs/current/spec.html#Timestamp+%28microsecond+precision%29)
         return {'type': 'long', 'logicalType': 'timestamp-micros'}
     else:
         raise TypeError('Invalid type: {}'.format(t))
 
 
-def __fields_infer(df: pd.DataFrame):
+def __fields_infer(df):
     fields = []
-    for key, type_np in df.dtypes.iteritems():
+    for key, type_np in six.iteritems(df.dtypes):
         type_avro = __type_infer(type_np)
         fields.append({'name': key, 'type': ['null', type_avro]})
     return fields
@@ -59,7 +77,7 @@ def read_avro(file_path_or_buffer, schema=None, **kwargs):
     Returns:
         Class of pd.DataFrame.
     """
-    if isinstance(file_path_or_buffer, str):
+    if isinstance(file_path_or_buffer, six.string_types):
         with open(file_path_or_buffer, 'rb') as f:
             return __file_to_dataframe(f, schema, **kwargs)
     else:
