@@ -3,6 +3,14 @@ import numpy as np
 import pandas as pd
 import six
 
+try:
+    # Pandas <= 0.23
+    from pandas.core.dtypes.dtypes import DatetimeTZDtypeType as DatetimeTZDtype
+except ImportError:
+    # Pandas >= 0.24
+    from pandas import DatetimeTZDtype
+
+
 # Pandas 0.24 added support for nullable integers. Include those in the supported
 # integer dtypes if present, otherwise ignore them.
 try:
