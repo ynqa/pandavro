@@ -11,8 +11,8 @@ setup(
     license='MIT',
     packages=find_packages(exclude=['example']),
     install_requires=[
-        'fastavro>=0.14.7',
-        'numpy',
+        'fastavro>=0.14.11',
+        'numpy>=1.7.0',
         'pandas',
         'six>=1.9',
     ],
