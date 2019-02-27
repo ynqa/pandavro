@@ -12,7 +12,7 @@ except ImportError:
     from pandas import DatetimeTZDtype
 
 
-SIMPLE_AVRO_TYPES = {
+NUMPY_TO_AVRO_TYPES = {
     np.dtype('?'): 'boolean',
     np.int8: 'int',
     np.int16: 'int',
@@ -26,31 +26,27 @@ SIMPLE_AVRO_TYPES = {
     np.unicode_: 'string',
     np.float32: 'float',
     np.float64: 'double',
-}
-
-
-COMPLEX_AVRO_TYPES = {
-    np.datetime64: {'type': ['null', 'long'], 'logicalType': 'timestamp-micros'},
-    DatetimeTZDtype: {'type': ['null', 'long'], 'logicalType': 'timestamp-micros'},
-    pd.Timestamp: {'type': ['null', 'long'], 'logicalType': 'timestamp-micros'},
+    np.datetime64: {'type': 'long', 'logicalType': 'timestamp-micros'},
+    DatetimeTZDtype: {'type': 'long', 'logicalType': 'timestamp-micros'},
+    pd.Timestamp: {'type': 'long', 'logicalType': 'timestamp-micros'},
 }
 
 
 # Pandas 0.24 added support for nullable integers. Include those in the supported
 # integer dtypes if present, otherwise ignore them.
 try:
-    SIMPLE_AVRO_TYPES[pd.Int8Dtype] = 'int'
-    SIMPLE_AVRO_TYPES[pd.Int16Dtype] = 'int'
-    SIMPLE_AVRO_TYPES[pd.Int32Dtype] = 'int'
-    SIMPLE_AVRO_TYPES[pd.Int64Dtype] = 'long'
+    NUMPY_TO_AVRO_TYPES[pd.Int8Dtype] = 'int'
+    NUMPY_TO_AVRO_TYPES[pd.Int16Dtype] = 'int'
+    NUMPY_TO_AVRO_TYPES[pd.Int32Dtype] = 'int'
+    NUMPY_TO_AVRO_TYPES[pd.Int64Dtype] = 'long'
 
     # We need the non-standard `unsigned` flag because Avro doesn't support
     # unsigned integers, and we have no other way of indicating that the loaded
     # integer is supposed to be unsigned.
-    COMPLEX_AVRO_TYPES[pd.UInt8Dtype] = {'type': 'int', 'unsigned': True}
-    COMPLEX_AVRO_TYPES[pd.UInt16Dtype] = {'type': 'int', 'unsigned': True}
-    COMPLEX_AVRO_TYPES[pd.UInt32Dtype] = {'type': 'int', 'unsigned': True}
-    COMPLEX_AVRO_TYPES[pd.UInt64Dtype] = {'type': 'long', 'unsigned': True}
+    NUMPY_TO_AVRO_TYPES[pd.UInt8Dtype] = {'type': 'int', 'unsigned': True}
+    NUMPY_TO_AVRO_TYPES[pd.UInt16Dtype] = {'type': 'int', 'unsigned': True}
+    NUMPY_TO_AVRO_TYPES[pd.UInt32Dtype] = {'type': 'int', 'unsigned': True}
+    NUMPY_TO_AVRO_TYPES[pd.UInt64Dtype] = {'type': 'long', 'unsigned': True}
 except AttributeError:
     pass
 
@@ -60,14 +56,12 @@ def __type_infer(t):
     # requires a parameter, the buffer size.
     if t is np.void:
         return {
-            'type': 'fixed',
+            'type': ['null', 'fixed'],
             'size': t.itemsize,
         }
 
-    if t in SIMPLE_AVRO_TYPES:
-        return ['null', SIMPLE_AVRO_TYPES[t]]
-    if t in COMPLEX_AVRO_TYPES:
-        return COMPLEX_AVRO_TYPES[t]
+    if t in NUMPY_TO_AVRO_TYPES:
+        return ['null', NUMPY_TO_AVRO_TYPES[t]]
     if hasattr(t, 'type'):
         return __type_infer(t.type)
 
@@ -75,10 +69,10 @@ def __type_infer(t):
 
 
 def __fields_infer(df):
-    fields = []
-    for key, type_np in six.iteritems(df.dtypes):
-        fields.append({'name': key, 'type': __type_infer(type_np)})
-    return fields
+    return [
+        {'name': key, 'type': __type_infer(type_np)}
+        for key, type_np in six.iteritems(df.dtypes)
+    ]
 
 
 def __schema_infer(df):
