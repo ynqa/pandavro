@@ -126,12 +126,13 @@ def from_avro(file_path_or_buffer, schema=None, **kwargs):
     return read_avro(file_path_or_buffer, schema, **kwargs)
 
 
-def to_avro(file_path, df, schema=None, codec='null'):
+def to_avro(file_path_or_buffer, df, schema=None, codec='null'):
     """
     Avro file writer.
 
     Args:
-        file_path: Output file path.
+        file_path_or_buffer:
+            Output file path or file-like object.
         df: pd.DataFrame.
         schema: Dict of Avro schema.
             If it's set None, inferring schema.
@@ -140,11 +141,13 @@ def to_avro(file_path, df, schema=None, codec='null'):
             "snappy" and "deflate". You must have python-snappy installed to use
             the snappy codec.
     """
-
     if schema is None:
         schema = __schema_infer(df)
 
-    with open(file_path, 'wb') as f:
-        fastavro.writer(f, schema=schema,
-                        records=df.to_dict('records'),
-                        codec=codec)
+    if isinstance(file_path_or_buffer, six.string_types):
+        with open(file_path_or_buffer, 'wb') as f:
+            fastavro.writer(f, schema=schema,
+                            records=df.to_dict('records'), codec=codec)
+    else:
+        fastavro.writer(file_path_or_buffer, schema=schema,
+                        records=df.to_dict('records'), codec=codec)
