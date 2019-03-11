@@ -83,7 +83,7 @@ def from_avro(file_path_or_buffer, schema=None, **kwargs):
     return read_avro(file_path_or_buffer, schema, **kwargs)
 
 
-def to_avro(file_path, df, schema=None):
+def to_avro(file_path, df, schema=None, append=False):
     """
     Avro file writer.
 
@@ -97,6 +97,8 @@ def to_avro(file_path, df, schema=None):
     if schema is None:
         schema = __schema_infer(df)
 
-    with open(file_path, 'wb') as f:
+    open_mode = 'wb' if not append else 'a+b'
+
+    with open(file_path, open_mode) as f:
         fastavro.writer(f, schema=schema,
                         records=df.to_dict('records'))
