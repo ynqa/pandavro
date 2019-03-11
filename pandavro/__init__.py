@@ -92,6 +92,7 @@ def to_avro(file_path, df, schema=None, append=False):
         df: pd.DataFrame.
         schema: Dict of Avro schema.
             If it's set None, inferring schema.
+        append: Boolean to control if will append to existing file
     """
 
     if schema is None:
