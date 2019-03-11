@@ -73,6 +73,15 @@ def test_delegation(dataframe):
     assert_frame_equal(expect, dataframe)
 
 
+def test_append(dataframe):
+    tf = NamedTemporaryFile()
+    pdx.to_avro(tf.name, dataframe[0:int(dataframe.shape[0] / 2)])
+    pdx.to_avro(tf.name, dataframe[int(dataframe.shape[0] / 2):], append=True)
+    expect = pdx.from_avro(tf.name)
+    expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
+    assert_frame_equal(expect, dataframe)
+
+
 def test_dataframe_kwargs(dataframe):
     tf = NamedTemporaryFile()
     pdx.to_avro(tf.name, dataframe)
