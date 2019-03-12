@@ -47,6 +47,8 @@ And these logical types:
 |------------|-------------------|
 | np.datetime64 or pd.core.dtypes.dtypes.DatetimeTZDtype | timestamp-micros |
 
+Note that the timestamp must not contain any timezone, i.e. it must be naive.
+
 If you don't want pandavro to infer this schema but instead define it yourself, pass it using the `schema` kwarg to `to_avro`.
 
 
