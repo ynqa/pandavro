@@ -6,7 +6,7 @@ The interface between Apache Avro and pandas DataFrame.
 
 ## Installation
 
-`pandavro` is available to install from [PyPI](https://pypi.python.org/pypi).
+`pandavro` is available to install from [PyPI](https://pypi.org/project/pandavro/).
 
 ```bash
 $ pip install pandavro
