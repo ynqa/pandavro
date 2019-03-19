@@ -39,7 +39,6 @@ Pandavro can handle these primitive types:
 | np.float64          | double |
 | np.unicode_         | string |
 | np.object_          | string |
-| np.void             | fixed  |
 | np.int8, np.int16, np.int32 | int |
 | np.uint8, np.uint16, np.uint32 | int |
 | np.int64, np.uint64 | long |
