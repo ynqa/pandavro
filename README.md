@@ -23,16 +23,16 @@ It prepares like pandas APIs:
     
 ## What can and can't pandavro do?
 
-AVRO can represent the following kinds of types:
+Avro can represent the following kinds of types:
 - Primitive types (`null`, `bool`, `int` etc.)
 - Complex types (records, arrays, maps etc.)
 - Logical types (annotated primitive/complex type to represent e.g. datetime)
 
-When converting to AVRO, pandavro will try to infer the schema. It will output a non-nested schema *without any indexes* set on the dataframe and it will also not try to infer if any column can be nullable so *all columns are set as nullable*, i.e. a boolean will be encoded in AVRO schema as `['null', 'bool']`.
+When converting to Avro, pandavro will try to infer the schema. It will output a non-nested schema *without any indexes* set on the dataframe and it will also not try to infer if any column can be nullable so *all columns are set as nullable*, i.e. a boolean will be encoded in Avro schema as `['null', 'bool']`.
 
 Pandavro can handle these primitive types:
 
-| Numpy type | AVRO primitive type |
+| Numpy type | Avro primitive type |
 |------------|-----------|
 | np.bool_   | boolean   |
 | np.int8 or np.int16 or np.int32 | int |
@@ -43,7 +43,7 @@ Pandavro can handle these primitive types:
 
 And these logical types:
 
-| Numpy type | AVRO logical type |
+| Numpy type | Avro logical type |
 |------------|-------------------|
 | np.datetime64 or pd.core.dtypes.dtypes.DatetimeTZDtype | timestamp-micros |
 
