@@ -32,20 +32,29 @@ When converting to Avro, pandavro will try to infer the schema. It will output a
 
 Pandavro can handle these primitive types:
 
-| Numpy type | Avro primitive type |
-|------------|-----------|
-| np.bool_   | boolean   |
-| np.int8 or np.int16 or np.int32 | int |
-| np.int64 | long |
-| np.float32 | float |
-| np.float64 | double |
-| np.object | string |
+| Numpy/pandas type   | Avro primitive type |
+|---------------------|---------------------|
+| np.bool_            | boolean   |
+| np.float32          | float |
+| np.float64          | double |
+| np.unicode_         | string |
+| np.object_          | string |
+| np.void             | fixed  |
+| np.int8, np.int16, np.int32 | int |
+| np.uint8, np.uint16, np.uint32 | int |
+| np.int64, np.uint64 | long |
+| pd.Int8Dtype, pd.Int16Dtype, pd.Int32Dtype | int |
+| pd.UInt8Dtype, pd.UInt16Dtype, pd.UInt32Dtype | "unsigned" int |
+| pd.Int64Dtype       | long |
+| pd.UInt64Dtype      | "unsigned" long |
+
+Pandas 0.24 added support for nullable integers, which we can easily represent in Avro. We represent the unsigned versions of these integers by adding the non-standard "unsigned" flag as such: `{'type': 'int', 'unsigned': True}`.
 
 And these logical types:
 
-| Numpy type | Avro logical type |
-|------------|-------------------|
-| np.datetime64 or pd.core.dtypes.dtypes.DatetimeTZDtype | timestamp-micros |
+| Numpy/pandas type | Avro logical type |
+|-------------------|-------------------|
+| np.datetime64, pd.DatetimeTZDtype, pd.Timestamp | timestamp-micros |
 
 Note that the timestamp must not contain any timezone, i.e. it must be naive.
 
