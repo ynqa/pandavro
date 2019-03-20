@@ -123,8 +123,7 @@ def from_avro(file_path_or_buffer, schema=None, **kwargs):
     return read_avro(file_path_or_buffer, schema, **kwargs)
 
 
-def to_avro(file_path_or_buffer, df, schema=None,  codec='null', append=False):
-
+def to_avro(file_path_or_buffer, df, schema=None, codec='null', append=False):
     """
     Avro file writer.
 
