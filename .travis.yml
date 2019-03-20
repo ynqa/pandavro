@@ -1,7 +1,10 @@
+dist: xenial
 language: python
 python:
+- 2.7
 - 3.5
 - 3.6
+- 3.7
 install:
 - pip install -e .[tests]
 script:
@@ -12,5 +15,5 @@ deploy:
   password:
     secure: AzvgwkzDrebeVQMiLhovjyie6UStCiNd7V35a18xc+4E+4WadK9ywR/3f/Yl78EzhL50gYK3mvuxH6ng5TR591uI8PZcNGinPvkslZRdN4Lph+n4VOYkTd1JJ+PsMws5YuWzPa2HUFNpDQ1LBPCCK7/ab5AwN3HMjyInVBCtu1nAh+nDKP+7WHaJKO1vd+YcQQX2QxYz1kZe/8zZ8Aqjj5JFI6cKUnc5C9Z8CPFQUn/Ho77CkOX99PD142HlJrzVX4Q8sxp34bH8TqRwqOfJU80ZXmiAYPSrfh3wsp4pfJ94uC4y9U2NhxFqFT4LhI4vcBd2yflFJnz9ciGKWT+Hw7CM8Clohb5trGTy95+J9pt1cNOqlxgBumpmiPCz/IEJEVL8lYta3FrGPVoLaaXLTkI+DNQAQ79WtFWoc+hHzGg2fr7OLw6jmro9HUjhOCE+K2bKTJyO7XuY4w0N9VRXHQVqdRMwyE/3SnM2+dtEQRKCUahktlSqhPMLwKMaQl+53N+1BWCjXBEF0kJE9Y7tZSiDpc+8/2J3WSVOTZ06P/44sSvlDCdkgwv2okh/Xc41tLoALVRtzRqjt+ED3tLR0QVavRnQevLUvX1N3WZNuGkisvYONw8Y7Qflu5tzES1Wizlw1+0rUUORyMG9e0okF8j2h3qkUWq5Z6LTrttk4mw=
   on:
-    branch: master
+    tags: true
     python: 3.6
