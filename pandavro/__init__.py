@@ -3,14 +3,12 @@ import numpy as np
 import pandas as pd
 import six
 
-
 try:
     # Pandas <= 0.23
     from pandas.core.dtypes import DatetimeTZDtypeType as DatetimeTZDtype
 except ImportError:
     # Pandas >= 0.24
     from pandas import DatetimeTZDtype
-
 
 NUMPY_TO_AVRO_TYPES = {
     np.dtype('?'): 'boolean',
@@ -30,7 +28,6 @@ NUMPY_TO_AVRO_TYPES = {
     DatetimeTZDtype: {'type': 'long', 'logicalType': 'timestamp-micros'},
     pd.Timestamp: {'type': 'long', 'logicalType': 'timestamp-micros'},
 }
-
 
 # Pandas 0.24 added support for nullable integers. Include those in the supported
 # integer dtypes if present, otherwise ignore them.
@@ -126,7 +123,7 @@ def from_avro(file_path_or_buffer, schema=None, **kwargs):
     return read_avro(file_path_or_buffer, schema, **kwargs)
 
 
-def to_avro(file_path_or_buffer, df, schema=None, codec='null'):
+def to_avro(file_path_or_buffer, df, schema=None, codec='null', append=False):
     """
     Avro file writer.
 
@@ -136,16 +133,20 @@ def to_avro(file_path_or_buffer, df, schema=None, codec='null'):
         df: pd.DataFrame.
         schema: Dict of Avro schema.
             If it's set None, inferring schema.
+        append: Boolean to control if will append to existing file
         codec: A string indicating the compression codec to use.
             Default is no compression ("null"), other acceptable values are
             "snappy" and "deflate". You must have python-snappy installed to use
             the snappy codec.
+
     """
     if schema is None:
         schema = __schema_infer(df)
 
+    open_mode = 'wb' if not append else 'a+b'
+
     if isinstance(file_path_or_buffer, six.string_types):
-        with open(file_path_or_buffer, 'wb') as f:
+        with open(file_path_or_buffer, open_mode) as f:
             fastavro.writer(f, schema=schema,
                             records=df.to_dict('records'), codec=codec)
     else:
