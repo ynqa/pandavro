@@ -3,14 +3,12 @@ import numpy as np
 import pandas as pd
 import six
 
-
 try:
     # Pandas <= 0.23
     from pandas.core.dtypes import DatetimeTZDtypeType as DatetimeTZDtype
 except ImportError:
     # Pandas >= 0.24
     from pandas import DatetimeTZDtype
-
 
 NUMPY_TO_AVRO_TYPES = {
     np.dtype('?'): 'boolean',
@@ -30,7 +28,6 @@ NUMPY_TO_AVRO_TYPES = {
     DatetimeTZDtype: {'type': 'long', 'logicalType': 'timestamp-micros'},
     pd.Timestamp: {'type': 'long', 'logicalType': 'timestamp-micros'},
 }
-
 
 # Pandas 0.24 added support for nullable integers. Include those in the supported
 # integer dtypes if present, otherwise ignore them.
@@ -156,4 +153,3 @@ def to_avro(file_path_or_buffer, df, schema=None,  codec='null', append=False):
     else:
         fastavro.writer(file_path_or_buffer, schema=schema,
                         records=df.to_dict('records'), codec=codec)
-
