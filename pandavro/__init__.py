@@ -123,7 +123,7 @@ def from_avro(file_path_or_buffer, schema=None, **kwargs):
     return read_avro(file_path_or_buffer, schema, **kwargs)
 
 
-def to_avro(file_path_or_buffer, df, schema=None, codec='null', append=False):
+def to_avro(file_path_or_buffer, df, schema=None, append=False, **kwargs):
     """
     Avro file writer.
 
@@ -134,10 +134,7 @@ def to_avro(file_path_or_buffer, df, schema=None, codec='null', append=False):
         schema: Dict of Avro schema.
             If it's set None, inferring schema.
         append: Boolean to control if will append to existing file
-        codec: A string indicating the compression codec to use.
-            Default is no compression ("null"), other acceptable values are
-            "snappy" and "deflate". You must have python-snappy installed to use
-            the snappy codec.
+        kwargs: Keyword arguments to fastavro.writer
 
     """
     if schema is None:
@@ -148,7 +145,7 @@ def to_avro(file_path_or_buffer, df, schema=None, codec='null', append=False):
     if isinstance(file_path_or_buffer, six.string_types):
         with open(file_path_or_buffer, open_mode) as f:
             fastavro.writer(f, schema=schema,
-                            records=df.to_dict('records'), codec=codec)
+                            records=df.to_dict('records'), **kwargs)
     else:
         fastavro.writer(file_path_or_buffer, schema=schema,
-                        records=df.to_dict('records'), codec=codec)
+                        records=df.to_dict('records'), **kwargs)
