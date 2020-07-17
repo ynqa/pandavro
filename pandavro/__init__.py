@@ -60,7 +60,11 @@ def __type_infer(t):
         }
 
     if t in NUMPY_TO_AVRO_TYPES:
-        return ['null', NUMPY_TO_AVRO_TYPES[t]]
+        avro_type = NUMPY_TO_AVRO_TYPES[t]
+        if isinstance(avro_type, dict):
+            # To ensure that the global is unmodified if millis are inserted
+            avro_type = avro_type.copy()
+        return ['null', avro_type]
     if hasattr(t, 'type'):
         return __type_infer(t.type)
 
@@ -68,10 +72,13 @@ def __type_infer(t):
 
 
 def __fields_infer(df):
-    return [
+    # print(NUMPY_TO_AVRO_TYPES)
+    x = [
         {'name': key, 'type': __type_infer(type_np)}
         for key, type_np in six.iteritems(df.dtypes)
     ]
+    # print(NUMPY_TO_AVRO_TYPES)
+    return x
 
 
 def __schema_infer(df, times_as_micros):
@@ -82,8 +89,7 @@ def __schema_infer(df, times_as_micros):
         'fields': fields
     }
 
-    # Patch 'timestamp-millis' in, leaving the default global
-    # NUMPY_TO_AVRO_TYPES unmodified
+    # Patch 'timestamp-millis' in
     if not times_as_micros:
         for field in schema['fields']:
             non_null_type = field['type'][1]
@@ -150,7 +156,7 @@ def to_avro(file_path_or_buffer, df, schema=None, append=False,
 
     """
     if schema is None:
-        schema = __schema_infer(df)
+        schema = __schema_infer(df, times_as_micros)
 
     open_mode = 'wb' if not append else 'a+b'
 
