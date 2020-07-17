@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 import fastavro
 import numpy as np
 import pandas as pd
@@ -72,13 +74,22 @@ def __fields_infer(df):
     ]
 
 
-def __schema_infer(df):
+def __schema_infer(df, times_as_micros):
     fields = __fields_infer(df)
     schema = {
         'type': 'record',
         'name': 'Root',
         'fields': fields
     }
+
+    # Patch 'timestamp-millis' in, leaving the default global
+    # NUMPY_TO_AVRO_TYPES unmodified
+    if not times_as_micros:
+        for field in schema['fields']:
+            non_null_type = field['type'][1]
+            if isinstance(non_null_type, dict):
+                if non_null_type.get('logicalType') == 'timestamp-micros':
+                    non_null_type['logicalType'] = 'timestamp-millis'
     return schema
 
 
@@ -123,7 +134,8 @@ def from_avro(file_path_or_buffer, schema=None, **kwargs):
     return read_avro(file_path_or_buffer, schema, **kwargs)
 
 
-def to_avro(file_path_or_buffer, df, schema=None, append=False, **kwargs):
+def to_avro(file_path_or_buffer, df, schema=None, append=False,
+            times_as_micros=True, **kwargs):
     """
     Avro file writer.
 
