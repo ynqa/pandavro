@@ -1,5 +1,3 @@
-from contextlib import contextmanager
-
 import fastavro
 import numpy as np
 import pandas as pd
@@ -72,13 +70,10 @@ def __type_infer(t):
 
 
 def __fields_infer(df):
-    # print(NUMPY_TO_AVRO_TYPES)
-    x = [
+    return [
         {'name': key, 'type': __type_infer(type_np)}
         for key, type_np in six.iteritems(df.dtypes)
     ]
-    # print(NUMPY_TO_AVRO_TYPES)
-    return x
 
 
 def __schema_infer(df, times_as_micros):
