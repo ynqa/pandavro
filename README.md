@@ -42,12 +42,16 @@ Pandavro can handle these primitive types:
 | np.int8, np.int16, np.int32                   | int                 |
 | np.uint8, np.uint16, np.uint32                | int                 |
 | np.int64, np.uint64                           | long                |
-| pd.Int8Dtype, pd.Int16Dtype, pd.Int32Dtype    | int                 |
-| pd.UInt8Dtype, pd.UInt16Dtype, pd.UInt32Dtype | "unsigned" int      |
-| pd.Int64Dtype                                 | long                |
-| pd.UInt64Dtype                                | "unsigned" long     |
+| pd.Int8Dtype, pd.Int16Dtype, pd.Int32Dtype*   | int                 |
+| pd.UInt8Dtype, pd.UInt16Dtype, pd.UInt32Dtype*| "unsigned" int      |
+| pd.Int64Dtype*                                | long                |
+| pd.UInt64Dtype*                               | "unsigned" long     |
+/ pd.StringDtype**                              / string              /
+/ pd.BooleanDtype**                             / boolean             /
 
-Pandas 0.24 added support for nullable integers, which we can easily represent in Avro. We represent the unsigned versions of these integers by adding the non-standard "unsigned" flag as such: `{'type': 'int', 'unsigned': True}`.
+\* Pandas 0.24 added support for nullable integers, which we can easily represent in Avro. We represent the unsigned versions of these integers by adding the non-standard "unsigned" flag as such: `{'type': 'int', 'unsigned': True}`.
+
+\** Pandas 1.0.0 added support for nullable string and boolean datatypes.
 
 And these logical types:
 
@@ -59,6 +63,10 @@ Note that the timestamp must not contain any timezone (it must be naive) because
 
 If you don't want pandavro to infer this schema but instead define it yourself, pass it using the `schema` kwarg to `to_avro`.
 
+## Loading Pandas nullable datatypes
+The nullable datatypes indicated in the table above are easily written to Avro, but loading them introduces ambiguity as we can use either the old, default or these new datatypes. We solve this by using a special keyword when loading to force conversion to these new NA-supporting datatypes (`support_na=True`).
+
+This is *different* from [convert_dtypes](https://pandas.pydata.org/docs/whatsnew/v1.0.0.html#convert-dtypes-method-to-ease-use-of-supported-extension-dtypes) as it does not infer the datatype based on the actual values, but it looks at the Avro schema so is deterministic and not dependent on the actual values.
 
 ## Example
 

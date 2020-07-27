@@ -1,7 +1,11 @@
+import logging
+
 import fastavro
 import numpy as np
 import pandas as pd
 import six
+
+logger = logging.getLogger(__name__)
 
 try:
     # Pandas <= 0.23
@@ -29,6 +33,9 @@ NUMPY_TO_AVRO_TYPES = {
     pd.Timestamp: {'type': 'long', 'logicalType': 'timestamp-micros'},
 }
 
+# This is used for forced conversion to Pandas 1.0 dtypes
+AVRO_TO_PANDAS_TYPES = {}
+
 # Pandas 0.24 added support for nullable integers. Include those in the supported
 # integer dtypes if present, otherwise ignore them.
 try:
@@ -44,8 +51,25 @@ try:
     NUMPY_TO_AVRO_TYPES[pd.UInt16Dtype] = {'type': 'int', 'unsigned': True}
     NUMPY_TO_AVRO_TYPES[pd.UInt32Dtype] = {'type': 'int', 'unsigned': True}
     NUMPY_TO_AVRO_TYPES[pd.UInt64Dtype] = {'type': 'long', 'unsigned': True}
+
+    AVRO_TO_PANDAS_TYPES['int'] = pd.Int32Dtype
+    AVRO_TO_PANDAS_TYPES['long'] = pd.Int64Dtype
+    # TODO: Add unsigned ints
+
+    logger.debug("Imported pandas >=0.24 integer datatypes")
 except AttributeError:
-    pass
+    logger.debug("Did not import pandas >=0.24 integer datatypes")
+
+try:
+    NUMPY_TO_AVRO_TYPES[pd.StringDtype] = 'string'
+    NUMPY_TO_AVRO_TYPES[pd.BooleanDtype] = 'boolean'
+
+    AVRO_TO_PANDAS_TYPES['string'] = pd.StringDtype
+    AVRO_TO_PANDAS_TYPES['boolean'] = pd.BooleanDtype
+
+    logger.debug("Imported pandas >=1.0.0 datatypes")
+except AttributeError:
+    logger.debug("Did not import pandas >=1.0.0 datatypes")
 
 
 def __type_infer(t):
@@ -94,9 +118,18 @@ def __schema_infer(df, times_as_micros):
     return schema
 
 
-def __file_to_dataframe(f, schema, **kwargs):
+def __file_to_dataframe(f, schema, na_dtypes=False, **kwargs):
     reader = fastavro.reader(f, reader_schema=schema)
-    return pd.DataFrame.from_records(list(reader), **kwargs)
+    df = pd.DataFrame.from_records(list(reader), **kwargs)
+    if na_dtypes:
+        # Look at schema here, map Avro types to available Pandas 1.0 dtypes
+        # Then convert dtypes in place to these new dtypes in a deterministic way
+        # We know this is possible as we know the Avro type
+        for field in reader.writer_schema["fields"]:
+            if field["type"] in AVRO_TO_PANDAS_TYPES:
+                name = field["name"]
+                df[name] = df[name].astype(AVRO_TO_PANDAS_TYPES[field["type"]]())
+    return df
 
 
 def read_avro(file_path_or_buffer, schema=None, **kwargs):
