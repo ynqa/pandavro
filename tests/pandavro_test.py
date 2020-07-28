@@ -33,7 +33,24 @@ def test_schema_infer(dataframe):
                 {'type': ['null', 'string'], 'name': 'String'},
             ]
     }
-    assert expect == pdx.__schema_infer(dataframe)
+    assert expect == pdx.__schema_infer(dataframe, times_as_micros=True)
+
+
+def test_schema_infer_times_as_millis(dataframe):
+    expect = {
+        'type': 'record',
+        'name': 'Root',
+        'fields':
+            [
+                {'type': ['null', 'boolean'], 'name': 'Boolean'},
+                {'type': ['null', {'logicalType': 'timestamp-millis', 'type': 'long'}],
+                    'name': 'DateTime64'},
+                {'type': ['null', 'double'], 'name': 'Float64'},
+                {'type': ['null', 'long'], 'name': 'Int64'},
+                {'type': ['null', 'string'], 'name': 'String'},
+            ]
+    }
+    assert expect == pdx.__schema_infer(dataframe, times_as_micros=False)
 
 
 def test_fields_infer(dataframe):

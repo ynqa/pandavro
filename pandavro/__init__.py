@@ -58,7 +58,11 @@ def __type_infer(t):
         }
 
     if t in NUMPY_TO_AVRO_TYPES:
-        return ['null', NUMPY_TO_AVRO_TYPES[t]]
+        avro_type = NUMPY_TO_AVRO_TYPES[t]
+        if isinstance(avro_type, dict):
+            # To ensure that the global is unmodified if millis are inserted
+            avro_type = avro_type.copy()
+        return ['null', avro_type]
     if hasattr(t, 'type'):
         return __type_infer(t.type)
 
@@ -72,13 +76,21 @@ def __fields_infer(df):
     ]
 
 
-def __schema_infer(df):
+def __schema_infer(df, times_as_micros):
     fields = __fields_infer(df)
     schema = {
         'type': 'record',
         'name': 'Root',
         'fields': fields
     }
+
+    # Patch 'timestamp-millis' in
+    if not times_as_micros:
+        for field in schema['fields']:
+            non_null_type = field['type'][1]
+            if isinstance(non_null_type, dict):
+                if non_null_type.get('logicalType') == 'timestamp-micros':
+                    non_null_type['logicalType'] = 'timestamp-millis'
     return schema
 
 
@@ -123,7 +135,8 @@ def from_avro(file_path_or_buffer, schema=None, **kwargs):
     return read_avro(file_path_or_buffer, schema, **kwargs)
 
 
-def to_avro(file_path_or_buffer, df, schema=None, append=False, **kwargs):
+def to_avro(file_path_or_buffer, df, schema=None, append=False,
+            times_as_micros=True, **kwargs):
     """
     Avro file writer.
 
@@ -138,7 +151,7 @@ def to_avro(file_path_or_buffer, df, schema=None, append=False, **kwargs):
 
     """
     if schema is None:
-        schema = __schema_infer(df)
+        schema = __schema_infer(df, times_as_micros)
 
     open_mode = 'wb' if not append else 'a+b'
 
