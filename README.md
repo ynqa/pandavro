@@ -68,6 +68,9 @@ The nullable datatypes indicated in the table above are easily written to Avro, 
 
 This is *different* from [convert_dtypes](https://pandas.pydata.org/docs/whatsnew/v1.0.0.html#convert-dtypes-method-to-ease-use-of-supported-extension-dtypes) as it does not infer the datatype based on the actual values, but it looks at the Avro schema so is deterministic and not dependent on the actual values.
 
+## Timezones
+Due to [an inherent design choice in fastavro](https://github.com/fastavro/fastavro/issues/409), it interprets a *naive* datetime in the system's timezone before serializing it. This has the consequence that your *naive* datetime will not correctly roundtrip to and from an Avro file. Always indicate a timezone to avoid the system timezone introducing problems.
+
 ## Example
 
 ```python
