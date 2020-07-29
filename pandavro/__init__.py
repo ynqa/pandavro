@@ -104,7 +104,7 @@ def __type_infer(t):
 
 def __fields_infer(df):
     return [
-        {'name': key, 'type': __type_infer(type_np, key=key)}
+        {'name': key, 'type': __type_infer(type_np)}
         for key, type_np in six.iteritems(df.dtypes)
     ]
 
