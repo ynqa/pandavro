@@ -10,10 +10,7 @@ from io import BytesIO
 @pytest.fixture
 def dataframe():
     return pd.DataFrame({"Boolean": [True, False, True, False, True, False, True, False],
-                         "DateTime64": [pd.Timestamp('20190101'), pd.Timestamp('20190102'),
-                                        pd.Timestamp('20190103'), pd.Timestamp('20190104'),
-                                        pd.Timestamp('20190105'), pd.Timestamp('20190106'),
-                                        pd.Timestamp('20190107'), pd.Timestamp('20190108')],
+                         "DateTime64": pd.date_range('20190101', '20190108', freq="1D", tz="UTC"),
                          "Float64": np.random.randn(8),
                          "Int64": np.random.randint(0, 10, 8),
                          "String": ['foo', 'bar', 'foo', 'bar', 'foo', 'bar', 'foo', 'bar']})
@@ -70,7 +67,7 @@ def test_buffer_e2e(dataframe):
     pdx.to_avro(tf.name, dataframe)
     with open(tf.name, 'rb') as f:
         expect = pdx.read_avro(BytesIO(f.read()))
-        expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
+        # expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
     assert_frame_equal(expect, dataframe)
 
 
@@ -78,7 +75,7 @@ def test_file_path_e2e(dataframe):
     tf = NamedTemporaryFile()
     pdx.to_avro(tf.name, dataframe)
     expect = pdx.read_avro(tf.name)
-    expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
+    # expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
     assert_frame_equal(expect, dataframe)
 
 
@@ -86,7 +83,7 @@ def test_delegation(dataframe):
     tf = NamedTemporaryFile()
     pdx.to_avro(tf.name, dataframe)
     expect = pdx.from_avro(tf.name)
-    expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
+    # expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
     assert_frame_equal(expect, dataframe)
 
 
@@ -95,7 +92,7 @@ def test_append(dataframe):
     pdx.to_avro(tf.name, dataframe[0:int(dataframe.shape[0] / 2)])
     pdx.to_avro(tf.name, dataframe[int(dataframe.shape[0] / 2):], append=True)
     expect = pdx.from_avro(tf.name)
-    expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
+    # expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
     assert_frame_equal(expect, dataframe)
 
 
@@ -110,14 +107,56 @@ def test_dataframe_kwargs(dataframe):
     # exclude columns
     columns = ['String', 'Boolean']
     expect = pdx.read_avro(tf.name, exclude=columns)
-    expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
+    # expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
     df = dataframe.drop(columns, axis=1)
     assert_frame_equal(expect, df)
     # specify index
     index = 'String'
     expect = pdx.read_avro(tf.name, index=index)
-    expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
+    # expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
     df = dataframe.set_index(index)
+    assert_frame_equal(expect, df)
+
+
+@pytest.fixture
+def dataframe_na_dtypes():
+    return pd.DataFrame({
+        "Boolean": [True, False, True, False, True, False, True, False],
+        "pdBoolean": pd.Series([True, False, True, False, True, False, True, False]).astype(pd.BooleanDtype()),
+        "DateTime64": pd.date_range('20190101', '20190108', freq="1D", tz="UTC"),
+        "Float64": np.random.randn(8),
+        "Int64": np.random.randint(0, 10, 8),
+        "pdInt64": pd.Series(list(np.random.randint(0, 10, 7)) + [None]).astype(pd.Int64Dtype()),
+        "String": ['foo', 'bar', 'foo', 'bar', 'foo', 'bar', 'foo', 'bar'],
+        "pdString": pd.Series(['foo', 'bar', 'foo', 'bar', 'foo', 'bar', 'foo', 'bar']).astype(pd.StringDtype())
+    })
+
+
+def test_advanced_dtypes(dataframe_na_dtypes):
+    "Should be able to write and read Pandas 1.0 NaN-compatible dtypes"
+    tf = NamedTemporaryFile()
+    pdx.to_avro(tf.name, dataframe_na_dtypes)
+
+    # Bools and datetime
+    columns = ['Boolean', 'pdBoolean', 'DateTime64']
+    expect = pdx.read_avro(tf.name, columns=columns, na_dtypes=True)
+    df = dataframe_na_dtypes[columns]
+    # We load everything as NA-dtypes
+    df["Boolean"] = df["Boolean"].astype(pd.BooleanDtype())
+    assert_frame_equal(expect, df)
+
+    # Floats and ints
+    columns = ['Float64', 'Int64', 'pdInt64']
+    expect = pdx.read_avro(tf.name, columns=columns, na_dtypes=True)
+    df = dataframe_na_dtypes[columns]
+    df["Int64"] = df["Int64"].astype(pd.Int64Dtype())
+    assert_frame_equal(expect, df)
+
+    # Strings
+    columns = ['String', 'pdString']
+    expect = pdx.read_avro(tf.name, columns=columns, na_dtypes=True)
+    df = dataframe_na_dtypes[columns]
+    df["String"] = df["String"].astype(pd.StringDtype())
     assert_frame_equal(expect, df)
 
 

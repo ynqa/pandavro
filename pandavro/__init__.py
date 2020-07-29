@@ -33,8 +33,11 @@ NUMPY_TO_AVRO_TYPES = {
     pd.Timestamp: {'type': 'long', 'logicalType': 'timestamp-micros'},
 }
 
-# This is used for forced conversion to Pandas 1.0 dtypes
+# This is used for forced conversion to Pandas NA-dtypes
 AVRO_TO_PANDAS_TYPES = {}
+
+# This is used to convert Pandas NA-dtypes to python so fastavro can write
+PANDAS_TO_PYTHON_TYPES = {}
 
 # Pandas 0.24 added support for nullable integers. Include those in the supported
 # integer dtypes if present, otherwise ignore them.
@@ -52,18 +55,24 @@ try:
     NUMPY_TO_AVRO_TYPES[pd.UInt32Dtype] = {'type': 'int', 'unsigned': True}
     NUMPY_TO_AVRO_TYPES[pd.UInt64Dtype] = {'type': 'long', 'unsigned': True}
 
+    # Int8 and Int16 don't exist in Pandas NA-dtypes
     AVRO_TO_PANDAS_TYPES['int'] = pd.Int32Dtype
     AVRO_TO_PANDAS_TYPES['long'] = pd.Int64Dtype
-    # TODO: Add unsigned ints
+    # TODO: Add unsigned ints?
 
     logger.debug("Imported pandas >=0.24 integer datatypes")
 except AttributeError:
     logger.debug("Did not import pandas >=0.24 integer datatypes")
 
 try:
-    NUMPY_TO_AVRO_TYPES[pd.StringDtype] = 'string'
-    NUMPY_TO_AVRO_TYPES[pd.BooleanDtype] = 'boolean'
+    # Recognize these Pandas dtypes
+    NUMPY_TO_AVRO_TYPES[pd.StringDtype()] = 'string'
+    NUMPY_TO_AVRO_TYPES[pd.BooleanDtype()] = 'boolean'
 
+    # Convert these to python first
+    PANDAS_TO_PYTHON_TYPES[np.bool_] = bool
+
+    # Indicate the optional return datatype
     AVRO_TO_PANDAS_TYPES['string'] = pd.StringDtype
     AVRO_TO_PANDAS_TYPES['boolean'] = pd.BooleanDtype
 
@@ -95,7 +104,7 @@ def __type_infer(t):
 
 def __fields_infer(df):
     return [
-        {'name': key, 'type': __type_infer(type_np)}
+        {'name': key, 'type': __type_infer(type_np, key=key)}
         for key, type_np in six.iteritems(df.dtypes)
     ]
 
@@ -121,14 +130,30 @@ def __schema_infer(df, times_as_micros):
 def __file_to_dataframe(f, schema, na_dtypes=False, **kwargs):
     reader = fastavro.reader(f, reader_schema=schema)
     df = pd.DataFrame.from_records(list(reader), **kwargs)
+
+    def _filter(typelist):
+        # It's a string, we return it directly
+        if type(typelist) == str:
+            return typelist
+        # If a logical type dict, it has a type attribute. Return None as we don't touch logical types
+        elif type(typelist) == dict:
+            return None
+            return _filter(typelist["type"])
+        else:
+            l = [t for t in typelist if t != "null"]
+            if len(l) > 1:
+                raise ValueError(f"More items in list than 1. {l}")
+            return _filter(l[0])
+
     if na_dtypes:
         # Look at schema here, map Avro types to available Pandas 1.0 dtypes
         # Then convert dtypes in place to these new dtypes in a deterministic way
         # We know this is possible as we know the Avro type
         for field in reader.writer_schema["fields"]:
-            if field["type"] in AVRO_TO_PANDAS_TYPES:
-                name = field["name"]
-                df[name] = df[name].astype(AVRO_TO_PANDAS_TYPES[field["type"]]())
+            t = _filter(field["type"])
+            name = field["name"]
+            if name in df.columns and t in AVRO_TO_PANDAS_TYPES:
+                df[name] = df[name].astype(AVRO_TO_PANDAS_TYPES[t]())
     return df
 
 
@@ -168,6 +193,20 @@ def from_avro(file_path_or_buffer, schema=None, **kwargs):
     return read_avro(file_path_or_buffer, schema, **kwargs)
 
 
+def _preprocess_dicts(l):
+    "Preprocess a list of dicts inplace"
+    for d in l:
+        for k, v in d.items():
+            # Replace pd.NaN with None so fastavro can write it
+            if pd.isna(v):
+                d[k] = None
+            for key, value in PANDAS_TO_PYTHON_TYPES.items():
+                # print(v, key, type(v), type(key), isinstance(v, key))
+                if isinstance(v, key):
+                    d[k] = value(v)
+    return l
+
+
 def to_avro(file_path_or_buffer, df, schema=None, append=False,
             times_as_micros=True, **kwargs):
     """
@@ -191,7 +230,7 @@ def to_avro(file_path_or_buffer, df, schema=None, append=False,
     if isinstance(file_path_or_buffer, six.string_types):
         with open(file_path_or_buffer, open_mode) as f:
             fastavro.writer(f, schema=schema,
-                            records=df.to_dict('records'), **kwargs)
+                            records=_preprocess_dicts(df.to_dict('records')), **kwargs)
     else:
         fastavro.writer(file_path_or_buffer, schema=schema,
-                        records=df.to_dict('records'), **kwargs)
+                        records=_preprocess_dicts(df.to_dict('records')), **kwargs)
