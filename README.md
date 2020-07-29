@@ -64,7 +64,14 @@ Note that the timestamp must not contain any timezone (it must be naive) because
 If you don't want pandavro to infer this schema but instead define it yourself, pass it using the `schema` kwarg to `to_avro`.
 
 ## Loading Pandas nullable datatypes
-The nullable datatypes indicated in the table above are easily written to Avro, but loading them introduces ambiguity as we can use either the old, default or these new datatypes. We solve this by using a special keyword when loading to force conversion to these new NA-supporting datatypes (`support_na=True`).
+The nullable datatypes indicated in the table above are easily written to Avro, but loading them introduces ambiguity as we can use either the old, default or these new datatypes. We solve this by using a special keyword when loading to force conversion to these new NA-supporting datatypes:
+
+```python
+import pandavro as pdx
+
+# Load datatypes as NA-compatible datatypes where possible
+pdx.read_avro(path, na_dtypes=True)
+```
 
 This is *different* from [convert_dtypes](https://pandas.pydata.org/docs/whatsnew/v1.0.0.html#convert-dtypes-method-to-ease-use-of-supported-extension-dtypes) as it does not infer the datatype based on the actual values, but it looks at the Avro schema so is deterministic and not dependent on the actual values.
 
