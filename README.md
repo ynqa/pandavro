@@ -46,8 +46,8 @@ Pandavro can handle these primitive types:
 | pd.UInt8Dtype, pd.UInt16Dtype, pd.UInt32Dtype*| "unsigned" int      |
 | pd.Int64Dtype*                                | long                |
 | pd.UInt64Dtype*                               | "unsigned" long     |
-/ pd.StringDtype**                              / string              /
-/ pd.BooleanDtype**                             / boolean             /
+| pd.StringDtype**                              | string              |
+| pd.BooleanDtype**                             | boolean             |
 
 \* Pandas 0.24 added support for nullable integers, which we can easily represent in Avro. We represent the unsigned versions of these integers by adding the non-standard "unsigned" flag as such: `{'type': 'int', 'unsigned': True}`.
 
