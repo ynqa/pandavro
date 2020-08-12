@@ -219,6 +219,8 @@ def to_avro(file_path_or_buffer, df, schema=None, append=False,
         schema: Dict of Avro schema.
             If it's set None, inferring schema.
         append: Boolean to control if will append to existing file
+        times_as_micros: If True (default), save datetimes with microseconds resolution. If False, save with millisecond
+            resolution instead.
         kwargs: Keyword arguments to fastavro.writer
 
     """
