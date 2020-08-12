@@ -58,7 +58,7 @@ try:
     # Int8 and Int16 don't exist in Pandas NA-dtypes
     AVRO_TO_PANDAS_TYPES['int'] = pd.Int32Dtype
     AVRO_TO_PANDAS_TYPES['long'] = pd.Int64Dtype
-    # TODO: Add unsigned ints?
+    # FIXME: Add support for loading unsigned ints
 
     logger.debug("Imported pandas >=0.24 integer datatypes")
 except AttributeError:
@@ -138,7 +138,6 @@ def __file_to_dataframe(f, schema, na_dtypes=False, **kwargs):
         # If a logical type dict, it has a type attribute. Return None as we don't touch logical types
         elif type(typelist) == dict:
             return None
-            return _filter(typelist["type"])
         else:
             l = [t for t in typelist if t != "null"]
             if len(l) > 1:
@@ -157,13 +156,14 @@ def __file_to_dataframe(f, schema, na_dtypes=False, **kwargs):
     return df
 
 
-def read_avro(file_path_or_buffer, schema=None, **kwargs):
+def read_avro(file_path_or_buffer, schema=None, na_dtypes=False, **kwargs):
     """
     Avro file reader.
 
     Args:
         file_path_or_buffer: Input file path or file-like object.
         schema: Avro schema.
+        na_dtypes: Read int, long, string, boolean types back as Pandas NA-supporting datatypes.
         **kwargs: Keyword argument to pandas.DataFrame.from_records.
 
     Returns:
@@ -171,12 +171,12 @@ def read_avro(file_path_or_buffer, schema=None, **kwargs):
     """
     if isinstance(file_path_or_buffer, six.string_types):
         with open(file_path_or_buffer, 'rb') as f:
-            return __file_to_dataframe(f, schema, **kwargs)
+            return __file_to_dataframe(f, schema, na_dtypes=na_dtypes, **kwargs)
     else:
-        return __file_to_dataframe(file_path_or_buffer, schema, **kwargs)
+        return __file_to_dataframe(file_path_or_buffer, schema, na_dtypes=na_dtypes, **kwargs)
 
 
-def from_avro(file_path_or_buffer, schema=None, **kwargs):
+def from_avro(file_path_or_buffer, schema=None, na_dtypes=False, **kwargs):
     """
     Avro file reader.
 
@@ -185,23 +185,24 @@ def from_avro(file_path_or_buffer, schema=None, **kwargs):
     Args:
         file_path_or_buffer: Input file path or file-like object.
         schema: Avro schema.
+        na_dtypes: Read int, long, string, boolean types back as Pandas NA-supporting datatypes.
         **kwargs: Keyword argument to pandas.DataFrame.from_records.
 
     Returns:
         Class of pd.DataFrame.
     """
-    return read_avro(file_path_or_buffer, schema, **kwargs)
+    return read_avro(file_path_or_buffer, schema, na_dtypes=na_dtypes, **kwargs)
 
 
 def _preprocess_dicts(l):
-    "Preprocess a list of dicts inplace"
+    "Preprocess list of dicts inplace for fastavro compatibility"
     for d in l:
         for k, v in d.items():
-            # Replace pd.NaN with None so fastavro can write it
-            if pd.isna(v):
+            # Replace pd.NA with None so fastavro can write it
+            if v is pd.NA:
                 d[k] = None
+            # Convert some Pandas dtypes to normal Python dtypes
             for key, value in PANDAS_TO_PYTHON_TYPES.items():
-                # print(v, key, type(v), type(key), isinstance(v, key))
                 if isinstance(v, key):
                     d[k] = value(v)
     return l
@@ -229,10 +230,17 @@ def to_avro(file_path_or_buffer, df, schema=None, append=False,
 
     open_mode = 'wb' if not append else 'a+b'
 
+    # This special kwarg is only to enable testing performance difference
+    if kwargs.get("_test_preprocess_off"):
+        kwargs.pop("_test_preprocess_off")
+        records = df.to_dict('records')
+    else:
+        records = _preprocess_dicts(df.to_dict('records'))
+
     if isinstance(file_path_or_buffer, six.string_types):
         with open(file_path_or_buffer, open_mode) as f:
             fastavro.writer(f, schema=schema,
-                            records=_preprocess_dicts(df.to_dict('records')), **kwargs)
+                            records=records, **kwargs)
     else:
         fastavro.writer(file_path_or_buffer, schema=schema,
-                        records=_preprocess_dicts(df.to_dict('records')), **kwargs)
+                        records=records, **kwargs)

@@ -160,5 +160,28 @@ def test_advanced_dtypes(dataframe_na_dtypes):
     assert_frame_equal(expect, df)
 
 
+def test_benchmark_advanced_dtypes(dataframe):
+    "Should not be much slower for basic dtype dataframes with Pandas NA-dtypes preprocessing"
+    import timeit
+    reps = 1000
+
+    t1 = timeit.timeit(
+        "pdx.to_avro(filename, df)",
+        globals=dict(pdx=pdx, filename=NamedTemporaryFile().name, df=dataframe),
+        number=reps
+    )
+
+    t2 = timeit.timeit(
+        "pdx.to_avro(filename, df, _test_preprocess_off=True)",
+        globals=dict(pdx=pdx, filename=NamedTemporaryFile().name, df=dataframe),
+        number=reps
+    )
+
+    # 20% was arbitrarily chosen to give some leeway in this slightly random benchmark
+    # Observed differences are very small
+    assert abs(t1 - t2) / min(t1, t2) < .2, "Performance difference is not below 20%, " \
+                                            "{:.3f}s with and {:.3f}s without".format(t1, t2)
+
+
 if __name__ == '__main__':
     pytest.main()
