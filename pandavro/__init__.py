@@ -142,7 +142,7 @@ def __file_to_dataframe(f, schema, na_dtypes=False, **kwargs):
         else:
             l = [t for t in typelist if t != "null"]
             if len(l) > 1:
-                raise ValueError(f"More items in list than 1. {l}")
+                raise ValueError("More items in Avro schema type list than 1: '{d}'".format(l))
             return _filter(l[0])
 
     if na_dtypes:
