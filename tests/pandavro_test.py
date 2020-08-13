@@ -1,10 +1,14 @@
-import pytest
+import subprocess
+import timeit
+from io import BytesIO
+from tempfile import NamedTemporaryFile
+
 import numpy as np
 import pandas as pd
-import pandavro as pdx
-from tempfile import NamedTemporaryFile
+import pytest
 from pandas.util.testing import assert_frame_equal
-from io import BytesIO
+
+import pandavro as pdx
 
 
 @pytest.fixture
@@ -120,15 +124,36 @@ def test_dataframe_kwargs(dataframe):
 
 @pytest.fixture
 def dataframe_na_dtypes():
+    def randints(dtype, length=8, nones=2):
+        "Make random ints with 'nones' NAs randomly placed"
+        s = pd.Series(list(np.random.randint(0, 10, 8)), dtype=dtype)
+        for i in np.random.choice(range(length), size=nones):
+            s[i] = None
+        return s
+
     return pd.DataFrame({
         "Boolean": [True, False, True, False, True, False, True, False],
-        "pdBoolean": pd.Series([True, False, True, False, True, False, True, False]).astype(pd.BooleanDtype()),
+        "pdBoolean": pd.Series([True, False, True, False, True, False, True, False], dtype=pd.BooleanDtype()),
         "DateTime64": pd.date_range('20190101', '20190108', freq="1D", tz="UTC"),
         "Float64": np.random.randn(8),
-        "Int64": np.random.randint(0, 10, 8),
-        "pdInt64": pd.Series(list(np.random.randint(0, 10, 7)) + [None]).astype(pd.Int64Dtype()),
         "String": ['foo', 'bar', 'foo', 'bar', 'foo', 'bar', 'foo', 'bar'],
-        "pdString": pd.Series(['foo', 'bar', 'foo', 'bar', 'foo', 'bar', 'foo', 'bar']).astype(pd.StringDtype())
+        "pdString": pd.Series(['foo', 'bar', 'foo', 'bar', 'foo', 'bar', 'foo', 'bar'], dtype=pd.StringDtype()),
+        "Int8": randints(dtype=np.int8, nones=0),
+        "Int16": randints(dtype=np.int16, nones=0),
+        "Int32": randints(dtype=np.int32, nones=0),
+        "Int64": randints(dtype=np.int64, nones=0),
+        "UInt8": randints(dtype=np.uint8, nones=0),
+        "UInt16": randints(dtype=np.uint16, nones=0),
+        "UInt32": randints(dtype=np.uint32, nones=0),
+        "UInt64": randints(dtype=np.uint64, nones=0),
+        "pdInt8": randints(dtype=pd.Int8Dtype()),
+        "pdInt16": randints(dtype=pd.Int16Dtype()),
+        "pdInt32": randints(dtype=pd.Int32Dtype()),
+        "pdInt64": randints(dtype=pd.Int64Dtype()),
+        "pdUInt8": randints(dtype=pd.UInt8Dtype()),
+        "pdUInt16": randints(dtype=pd.UInt16Dtype()),
+        "pdUInt32": randints(dtype=pd.UInt32Dtype()),
+        # "pdUInt64": randints(dtype=pd.UInt64Dtype()),
     })
 
 
@@ -160,9 +185,57 @@ def test_advanced_dtypes(dataframe_na_dtypes):
     assert_frame_equal(expect, df)
 
 
+def test_ints(dataframe_na_dtypes):
+    "Should write and read (unsigned) ints"
+    tf = NamedTemporaryFile()
+    pdx.to_avro(tf.name, dataframe_na_dtypes)
+
+    print(subprocess.run(["fastavro", "--schema", tf.name]))
+
+    # Numpy Ints
+    # FIXME: fastavro reads all ints as np.int64
+    columns = ['Int8', 'Int16', 'Int32', 'Int64']
+    expect = pdx.read_avro(tf.name, columns=columns, na_dtypes=False)
+    df = dataframe_na_dtypes[columns]
+    # Avro does not have the concept of 8 or 16-bit int
+    df["Int8"] = df["Int8"].astype(np.int64)
+    df["Int16"] = df["Int16"].astype(np.int64)
+    df["Int32"] = df["Int32"].astype(np.int64)
+    assert_frame_equal(expect, df)
+
+    # Numpy UInts
+    # FIXME: fastavro reads all uints as np.int64
+    columns = ['UInt8', 'UInt16', 'UInt32', 'UInt64']
+    expect = pdx.read_avro(tf.name, columns=columns, na_dtypes=False)
+    df = dataframe_na_dtypes[columns]
+    # Avro does not have the concept of 8 or 16-bit int
+    df["UInt8"] = df["UInt8"].astype(np.int64)
+    df["UInt16"] = df["UInt16"].astype(np.int64)
+    df["UInt32"] = df["UInt32"].astype(np.int64)
+    df["UInt64"] = df["UInt64"].astype(np.int64)
+    assert_frame_equal(expect, df)
+
+    # Pandas Ints
+    columns = ['pdInt8', 'pdInt16', 'pdInt32', 'pdInt64']
+    expect = pdx.read_avro(tf.name, columns=columns, na_dtypes=True)
+    df = dataframe_na_dtypes[columns]
+    # Avro does not have the concept of 8 or 16-bit int
+    df["pdInt8"] = df["pdInt8"].astype(pd.Int32Dtype())
+    df["pdInt16"] = df["pdInt16"].astype(pd.Int32Dtype())
+    assert_frame_equal(expect, df)
+
+    # Pandas UInts
+    # fastavro does not seem to support writing 64-bit unsigned ints
+    columns = ['pdUInt8', 'pdUInt16', 'pdUInt32']
+    expect = pdx.read_avro(tf.name, columns=columns, na_dtypes=True)
+    df = dataframe_na_dtypes[columns]
+    df["pdUInt8"] = df["pdUInt8"].astype(pd.UInt32Dtype())
+    df["pdUInt16"] = df["pdUInt16"].astype(pd.UInt32Dtype())
+    assert_frame_equal(expect, df, check_dtype=False)
+
+
 def test_benchmark_advanced_dtypes(dataframe):
     "Should not be much slower for basic dtype dataframes with Pandas NA-dtypes preprocessing"
-    import timeit
     reps = 1000
 
     t1 = timeit.timeit(

@@ -16,14 +16,15 @@ except ImportError:
 
 NUMPY_TO_AVRO_TYPES = {
     np.dtype('?'): 'boolean',
+    # pd.[U]Int[6/16/32/64]Dtype() is covered by these numpy types
     np.int8: 'int',
     np.int16: 'int',
     np.int32: 'int',
-    np.uint8: 'int',
-    np.uint16: 'int',
-    np.uint32: 'int',
+    np.uint8: {'type': 'int', 'unsigned': True},
+    np.uint16: {'type': 'int', 'unsigned': True},
+    np.uint32: {'type': 'int', 'unsigned': True},
     np.int64: 'long',
-    np.uint64: 'long',
+    np.uint64: {'type': 'long', 'unsigned': True},
     np.dtype('O'): 'string',  # FIXME: Don't automatically store objects as strings
     np.unicode_: 'string',
     np.float32: 'float',
@@ -35,6 +36,8 @@ NUMPY_TO_AVRO_TYPES = {
 
 # This is used for forced conversion to Pandas NA-dtypes
 AVRO_TO_PANDAS_TYPES = {}
+# We use this extra dict for unsigned ints, adding it allows the dicts to stay a nice simple mapping
+AVRO_TO_PANDAS_UNSIGNED_TYPES = {}
 
 # This is used to convert Pandas NA-dtypes to python so fastavro can write
 PANDAS_TO_PYTHON_TYPES = {}
@@ -42,23 +45,10 @@ PANDAS_TO_PYTHON_TYPES = {}
 # Pandas 0.24 added support for nullable integers. Include those in the supported
 # integer dtypes if present, otherwise ignore them.
 try:
-    NUMPY_TO_AVRO_TYPES[pd.Int8Dtype] = 'int'
-    NUMPY_TO_AVRO_TYPES[pd.Int16Dtype] = 'int'
-    NUMPY_TO_AVRO_TYPES[pd.Int32Dtype] = 'int'
-    NUMPY_TO_AVRO_TYPES[pd.Int64Dtype] = 'long'
-
-    # We need the non-standard `unsigned` flag because Avro doesn't support
-    # unsigned integers, and we have no other way of indicating that the loaded
-    # integer is supposed to be unsigned.
-    NUMPY_TO_AVRO_TYPES[pd.UInt8Dtype] = {'type': 'int', 'unsigned': True}
-    NUMPY_TO_AVRO_TYPES[pd.UInt16Dtype] = {'type': 'int', 'unsigned': True}
-    NUMPY_TO_AVRO_TYPES[pd.UInt32Dtype] = {'type': 'int', 'unsigned': True}
-    NUMPY_TO_AVRO_TYPES[pd.UInt64Dtype] = {'type': 'long', 'unsigned': True}
-
     # Int8 and Int16 don't exist in Pandas NA-dtypes
     AVRO_TO_PANDAS_TYPES['int'] = pd.Int32Dtype
     AVRO_TO_PANDAS_TYPES['long'] = pd.Int64Dtype
-    # FIXME: Add support for loading unsigned ints
+    AVRO_TO_PANDAS_UNSIGNED_TYPES['int'] = pd.UInt32Dtype
 
     logger.debug("Imported pandas >=0.24 integer datatypes")
 except AttributeError:
@@ -84,6 +74,7 @@ except AttributeError:
 def __type_infer(t):
     # Binary data has to be handled separately from the other dtypes because it
     # requires a parameter, the buffer size.
+    print(t)
     if t is np.void:
         return {
             'type': ['null', 'fixed'],
@@ -134,10 +125,15 @@ def __file_to_dataframe(f, schema, na_dtypes=False, **kwargs):
     def _filter(typelist):
         # It's a string, we return it directly
         if type(typelist) == str:
-            return typelist
-        # If a logical type dict, it has a type attribute. Return None as we don't touch logical types
+            return typelist, False
+        # If a logical type dict, it has a type attribute
         elif type(typelist) == dict:
-            return None
+            # Return None as we don't touch logical types
+            if typelist.get('logicalType'):
+                return None, False
+            elif typelist.get('unsigned'):
+                return typelist['type'], True
+        # It's a list and we filter any "null"
         else:
             l = [t for t in typelist if t != "null"]
             if len(l) > 1:
@@ -149,10 +145,15 @@ def __file_to_dataframe(f, schema, na_dtypes=False, **kwargs):
         # Then convert dtypes in place to these new dtypes in a deterministic way
         # We know this is possible as we know the Avro type
         for field in reader.writer_schema["fields"]:
-            t = _filter(field["type"])
+            t, u = _filter(field["type"])
             name = field["name"]
-            if name in df.columns and t in AVRO_TO_PANDAS_TYPES:
-                df[name] = df[name].astype(AVRO_TO_PANDAS_TYPES[t]())
+            if name in df.columns:
+                if not u:
+                    if t in AVRO_TO_PANDAS_TYPES:
+                        df[name] = df[name].astype(AVRO_TO_PANDAS_TYPES[t]())
+                else:
+                    if t in AVRO_TO_PANDAS_UNSIGNED_TYPES:
+                        df[name] = df[name].astype(AVRO_TO_PANDAS_UNSIGNED_TYPES[t]())
     return df
 
 
