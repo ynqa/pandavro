@@ -74,7 +74,6 @@ except AttributeError:
 def __type_infer(t):
     # Binary data has to be handled separately from the other dtypes because it
     # requires a parameter, the buffer size.
-    print(t)
     if t is np.void:
         return {
             'type': ['null', 'fixed'],

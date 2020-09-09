@@ -94,12 +94,12 @@ OUTPUT_PATH='{}/example.avro'.format(os.path.dirname(__file__))
 def main():
     df = pd.DataFrame({
         "Boolean": [True, False, True, False],
-        "pdBoolean": pd.Series([True, False, True, False, True, None, True, False], dtype=pd.BooleanDtype()),
+        "pdBoolean": pd.Series([True, None, True, False], dtype=pd.BooleanDtype()),
         "Float64": np.random.randn(4),
         "Int64": np.random.randint(0, 10, 4),
-        "pdInt64":  pd.Series(list(np.random.randint(0, 10, 7)) + [None], dtype=pd.Int64Dtype()),
+        "pdInt64":  pd.Series(list(np.random.randint(0, 10, 3)) + [None], dtype=pd.Int64Dtype()),
         "String": ['foo', 'bar', 'foo', 'bar'],
-        "pdString": pd.Series(['foo', 'bar', 'foo', 'bar', 'foo', 'bar', 'foo', 'bar'], dtype=pd.StringDtype()),
+        "pdString": pd.Series(['foo', 'bar', 'foo', None], dtype=pd.StringDtype()),
         "DateTime64": [pd.Timestamp('20190101'), pd.Timestamp('20190102'),
                        pd.Timestamp('20190103'), pd.Timestamp('20190104')]
     })
