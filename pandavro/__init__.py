@@ -1,3 +1,6 @@
+from collections import OrderedDict
+import pprint
+
 import fastavro
 import numpy as np
 import pandas as pd
@@ -5,7 +8,8 @@ import six
 
 try:
     # Pandas <= 0.23
-    from pandas.core.dtypes.dtypes import DatetimeTZDtypeType as DatetimeTZDtype
+    from pandas.core.dtypes.dtypes import (
+        DatetimeTZDtypeType as DatetimeTZDtype)
 except ImportError:
     # Pandas >= 0.24
     from pandas import DatetimeTZDtype
@@ -20,7 +24,7 @@ NUMPY_TO_AVRO_TYPES = {
     np.uint32: 'int',
     np.int64: 'long',
     np.uint64: 'long',
-    np.dtype('O'): 'string',  # FIXME: Don't automatically store objects as strings
+    np.dtype('O'): 'complex',
     np.unicode_: 'string',
     np.float32: 'float',
     np.float64: 'double',
@@ -29,8 +33,8 @@ NUMPY_TO_AVRO_TYPES = {
     pd.Timestamp: {'type': 'long', 'logicalType': 'timestamp-micros'},
 }
 
-# Pandas 0.24 added support for nullable integers. Include those in the supported
-# integer dtypes if present, otherwise ignore them.
+# Pandas 0.24 added support for nullable integers. Include those in the
+# supported integer dtypes if present, otherwise ignore them.
 try:
     NUMPY_TO_AVRO_TYPES[pd.Int8Dtype] = 'int'
     NUMPY_TO_AVRO_TYPES[pd.Int16Dtype] = 'int'
@@ -69,11 +73,58 @@ def __type_infer(t):
     raise TypeError('Invalid type: {}'.format(t))
 
 
+def __complex_field_infer(df, field):
+    NoneType = type(None)
+    string_types = {str, NoneType}
+    record_types = {dict, OrderedDict, NoneType}
+    array_types = {list, NoneType}
+
+    base_field_types = set(df[field].apply(type))
+    # String type
+    if base_field_types.issubset(string_types):
+        return {'type': 'string'}
+    # Record type
+    elif base_field_types.issubset(record_types):
+        records = df.loc[~df[field].isna(), field]
+        return {
+            'type': 'record',
+            'name': field + '_record',
+            'fields': __fields_infer(pd.DataFrame.from_records(records))
+        }
+    # Array type
+    elif base_field_types.issubset(array_types):
+        arrays = pd.Series(df.loc[~df[field].isna(), field].sum(), name=field)
+        return {
+            'type': 'array',
+            'items': __fields_infer(arrays.to_frame())[0]['type']
+        }
+
+
 def __fields_infer(df):
-    return [
+    inferred_fields = [
         {'name': key, 'type': __type_infer(type_np)}
         for key, type_np in six.iteritems(df.dtypes)
     ]
+    for field in inferred_fields:
+        if 'complex' in field['type']:
+            field['type'] = ['null', __complex_field_infer(df, field['name'])]
+    return inferred_fields
+
+
+def __convert_field_micros_to_millis(field):
+    if isinstance(field, list):
+        for i in range(0, len(field)):
+            field[i] = __convert_field_micros_to_millis(field[i])
+        return field
+    elif isinstance(field, dict):
+        for key, item in field.items():
+            field[key] = __convert_field_micros_to_millis(item)
+        return field
+    elif isinstance(field, str):
+        if field == 'timestamp-micros':
+            return 'timestamp-millis'
+        else:
+            return field
 
 
 def __schema_infer(df, times_as_micros):
@@ -86,11 +137,10 @@ def __schema_infer(df, times_as_micros):
 
     # Patch 'timestamp-millis' in
     if not times_as_micros:
+        pprint.pprint(schema)
         for field in schema['fields']:
-            non_null_type = field['type'][1]
-            if isinstance(non_null_type, dict):
-                if non_null_type.get('logicalType') == 'timestamp-micros':
-                    non_null_type['logicalType'] = 'timestamp-millis'
+            field = __convert_field_micros_to_millis(field)
+    pprint.pprint(schema)
     return schema
 
 
