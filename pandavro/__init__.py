@@ -7,8 +7,7 @@ import six
 
 try:
     # Pandas <= 0.23
-    from pandas.core.dtypes.dtypes import (
-        DatetimeTZDtypeType as DatetimeTZDtype)
+    from pandas.core.dtypes.dtypes import DatetimeTZDtypeType as DatetimeTZDtype
 except ImportError:
     # Pandas >= 0.24
     from pandas import DatetimeTZDtype
@@ -32,8 +31,7 @@ NUMPY_TO_AVRO_TYPES = {
     pd.Timestamp: {'type': 'long', 'logicalType': 'timestamp-micros'},
 }
 
-# Pandas 0.24 added support for nullable integers. Include those in the
-# supported integer dtypes if present, otherwise ignore them.
+# Pandas 0.24 added support for nullable integers. Include those in the supported integer dtypes if present, otherwise ignore them.
 try:
     NUMPY_TO_AVRO_TYPES[pd.Int8Dtype] = 'int'
     NUMPY_TO_AVRO_TYPES[pd.Int16Dtype] = 'int'
