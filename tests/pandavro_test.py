@@ -90,6 +90,7 @@ def test_schema_infer_complex_types(dataframe):
 
     assert expect == pdx.schema_infer(dataframe, times_as_micros=True)
 
+
 def test_fields_infer(dataframe):
     expect = [
         {'type': ['null', 'boolean'], 'name': 'Boolean'},
