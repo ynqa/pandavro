@@ -31,7 +31,8 @@ NUMPY_TO_AVRO_TYPES = {
     pd.Timestamp: {'type': 'long', 'logicalType': 'timestamp-micros'},
 }
 
-# Pandas 0.24 added support for nullable integers. Include those in the supported integer dtypes if present, otherwise ignore them.
+# Pandas 0.24 added support for nullable integers. Include those in the supported
+# integer dtypes if present, otherwise ignore them.
 try:
     NUMPY_TO_AVRO_TYPES[pd.Int8Dtype] = 'int'
     NUMPY_TO_AVRO_TYPES[pd.Int16Dtype] = 'int'
