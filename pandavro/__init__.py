@@ -84,6 +84,7 @@ def __complex_field_infer(df, field, nested_record_names):
     # its type as np.dtype('O'), so we have to double check for it here.
     if base_field_types.issubset(bool_types):
         return 'boolean'
+    # String type
     if base_field_types.issubset(string_types):
         return 'string'
     # Record type
