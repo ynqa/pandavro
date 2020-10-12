@@ -52,12 +52,13 @@ Pandas 0.24 added support for nullable integers, which we can easily represent i
 If a boolean column includes empty values, pandas classifies the column as having a dtype of `object` - this is accounted for in complex column handling.
 
 
-And these complex types - all complex types will be classified by pandas as having a dtype of `object`, so their underlying python types are used to determine the Avro type:
+And these complex types - all complex types other than 'fixed' will be classified by pandas as having a dtype of `object`, so their underlying python types are used to determine the Avro type:
 
-| Python type                                   | Avro complex type   |
-|-----------------------------------------------|---------------------|
-| dict, collections.OrderedDict                 | record              |
-| list                                          | array               |
+| Numpy/Python type             | Avro complex type |
+|-------------------------------|-------------------|
+| dict, collections.OrderedDict | record            |
+| list                          | array             |
+| np.void                       | fixed             |
 
 Record and array types can be arbitrarily nested within each other.
 
@@ -67,7 +68,6 @@ The remaining Avro complex types are not currently supported for the following r
 1. Enum: The closest pandas type to Avro's enum type is `pd.Categorical`, but it still is not a complete match. Possible values of the enum type can only be alphanumeric strings, whereas `pd.Categorical` values have no such limitation.
 2. Map: No strictly matching concept in Python/pandas - Python dictionaries can have arbitrarily typed keys. Functionality can be essentially be achieved with the record type.
 3. Union: Any column with mixed types (other than empty values/`NoneType`) are treated by pandas as having a dtype of `object`, and will be written as strings. It would be difficult to deterministically infer multiple allowed data types based solely on a column's contents.
-4. Fixed: There is no immediately equivalent Python/pandas type for binary data. The data in some columns could be translated to binary data (such as with `int.to_bytes()`), but pandavro would need to be instructed on which columns to translate and which to leave alone. This would add a great deal of complexity to the code - certainly more complexity than just saving the binary data as strings.
 
 
 And these logical types:
