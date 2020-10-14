@@ -119,7 +119,7 @@ def __complex_field_infer(df, field, nested_record_names):
         }
 
 
-def __fields_infer(df, nested_record_names={}):
+def __fields_infer(df, nested_record_names):
     inferred_fields = [
         {'name': key, 'type': __type_infer(type_np)}
         for key, type_np in six.iteritems(df.dtypes)
@@ -159,7 +159,7 @@ def schema_infer(df, times_as_micros=True):
             Whether timestamps should be stored as microseconds (default)
             or milliseconds (as expected by Apache Hive)
     """
-    fields = __fields_infer(df)
+    fields = __fields_infer(df, {})
     schema = {
         'type': 'record',
         'name': 'Root',
