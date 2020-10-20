@@ -80,13 +80,14 @@ def __complex_field_infer(df, field, nested_record_names):
 
     base_field_types = set(df[field].apply(type))
 
+    # String type - have to check for string first, in case a column contains
+    # entirely 'None's
+    if base_field_types.issubset(string_types):
+        return 'string'
     # Bool type - if a boolean field contains missing values, pandas will give
     # its type as np.dtype('O'), so we have to double check for it here.
     if base_field_types.issubset(bool_types):
         return 'boolean'
-    # String type
-    if base_field_types.issubset(string_types):
-        return 'string'
     # Record type
     elif base_field_types.issubset(record_types):
         records = df.loc[~df[field].isna(), field].reset_index(drop=True)
