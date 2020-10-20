@@ -78,7 +78,6 @@ def test_schema_infer_complex_types(dataframe):
                  'name': 'Array'}
             ]
     }
-    print(dataframe)
     dataframe["Record"] = [
         {'field1': 1, 'field2': 'str1'}, {'field1': 2, 'field2': 'str2'},
         {'field1': 3, 'field2': 'str3'}, {'field1': 4, 'field2': 'str4'},
@@ -100,7 +99,7 @@ def test_fields_infer(dataframe):
         {'type': ['null', 'long'], 'name': 'Int64'},
         {'type': ['null', 'string'], 'name': 'String'},
     ]
-    assert expect == pdx.__fields_infer(dataframe)
+    assert expect == pdx.__fields_infer(dataframe, nested_record_names={})
 
 
 def test_buffer_e2e(dataframe):
