@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import pandavro as pdx
 from tempfile import NamedTemporaryFile
-from pandas.util.testing import assert_frame_equal
+from pandas.testing import assert_frame_equal
 from io import BytesIO
 
 
@@ -33,7 +33,7 @@ def test_schema_infer(dataframe):
                 {'type': ['null', 'string'], 'name': 'String'},
             ]
     }
-    assert expect == pdx.__schema_infer(dataframe, times_as_micros=True)
+    assert expect == pdx.schema_infer(dataframe, times_as_micros=True)
 
 
 def test_schema_infer_times_as_millis(dataframe):
@@ -50,7 +50,44 @@ def test_schema_infer_times_as_millis(dataframe):
                 {'type': ['null', 'string'], 'name': 'String'},
             ]
     }
-    assert expect == pdx.__schema_infer(dataframe, times_as_micros=False)
+    assert expect == pdx.schema_infer(dataframe, times_as_micros=False)
+
+
+def test_schema_infer_complex_types(dataframe):
+    expect = {
+        'type': 'record',
+        'name': 'Root',
+        'fields':
+            [
+                {'type': ['null', 'boolean'], 'name': 'Boolean'},
+                {'type': ['null', {'logicalType': 'timestamp-micros', 'type': 'long'}],
+                    'name': 'DateTime64'},
+                {'type': ['null', 'double'], 'name': 'Float64'},
+                {'type': ['null', 'long'], 'name': 'Int64'},
+                {'type': ['null', 'string'], 'name': 'String'},
+                {'type': ['null', {
+                    'fields':
+                        [
+                            {'name': 'field1', 'type': ['null', 'long']},
+                            {'name': 'field2', 'type': ['null', 'string']}
+                        ],
+                    'name': 'Record_record0',
+                    'type': 'record'}],
+                 'name': 'Record'},
+                {'type': ['null', {'type': 'array', 'items': ['null', 'long']}],
+                 'name': 'Array'}
+            ]
+    }
+    dataframe["Record"] = [
+        {'field1': 1, 'field2': 'str1'}, {'field1': 2, 'field2': 'str2'},
+        {'field1': 3, 'field2': 'str3'}, {'field1': 4, 'field2': 'str4'},
+        {'field1': 5, 'field2': 'str5'}, {'field1': 6, 'field2': 'str6'},
+        {'field1': 7, 'field2': 'str7'}, {'field1': 8, 'field2': 'str8'}]
+    dataframe["Array"] = [
+        [1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12], [13, 14], [15, 16]
+    ]
+
+    assert expect == pdx.schema_infer(dataframe, times_as_micros=True)
 
 
 def test_fields_infer(dataframe):
@@ -62,7 +99,7 @@ def test_fields_infer(dataframe):
         {'type': ['null', 'long'], 'name': 'Int64'},
         {'type': ['null', 'string'], 'name': 'String'},
     ]
-    assert expect == pdx.__fields_infer(dataframe)
+    assert expect == pdx.__fields_infer(dataframe, nested_record_names={})
 
 
 def test_buffer_e2e(dataframe):

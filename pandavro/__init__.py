@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 import fastavro
 import numpy as np
 import pandas as pd
@@ -20,7 +22,7 @@ NUMPY_TO_AVRO_TYPES = {
     np.uint32: 'int',
     np.int64: 'long',
     np.uint64: 'long',
-    np.dtype('O'): 'string',  # FIXME: Don't automatically store objects as strings
+    np.dtype('O'): 'complex',
     np.unicode_: 'string',
     np.float32: 'float',
     np.float64: 'double',
@@ -69,15 +71,96 @@ def __type_infer(t):
     raise TypeError('Invalid type: {}'.format(t))
 
 
-def __fields_infer(df):
-    return [
+def __complex_field_infer(df, field, nested_record_names):
+    NoneType = type(None)
+    bool_types = {bool, NoneType}
+    string_types = {str, NoneType}
+    record_types = {dict, OrderedDict, NoneType}
+    array_types = {list, NoneType}
+
+    base_field_types = set(df[field].apply(type))
+
+    # String type - have to check for string first, in case a column contains
+    # entirely 'None's
+    if base_field_types.issubset(string_types):
+        return 'string'
+    # Bool type - if a boolean field contains missing values, pandas will give
+    # its type as np.dtype('O'), so we have to double check for it here.
+    if base_field_types.issubset(bool_types):
+        return 'boolean'
+    # Record type
+    elif base_field_types.issubset(record_types):
+        records = df.loc[~df[field].isna(), field].reset_index(drop=True)
+
+        if field in nested_record_names:
+            nested_record_names[field] += 1
+        else:
+            nested_record_names[field] = 0
+        return {
+            'type': 'record',
+            'name': field + '_record' + str(nested_record_names[field]),
+            'fields': __fields_infer(pd.DataFrame.from_records(records),
+                                     nested_record_names)
+        }
+    # Array type
+    elif base_field_types.issubset(array_types):
+        arrays = pd.Series(df.loc[~df[field].isna(), field].sum(),
+                           name=field).reset_index(drop=True)
+        if arrays.empty:
+            print('Array field \'{}\' has been provided containing only empty '
+                  'lists. The intended type of its contents cannot be '
+                  'inferred, so \'string\' was assumed.'.format(field))
+            items = 'string'
+        else:
+            items = __fields_infer(arrays.to_frame(),
+                                   nested_record_names)[0]['type']
+        return {
+            'type': 'array',
+            'items': items
+        }
+
+
+def __fields_infer(df, nested_record_names):
+    inferred_fields = [
         {'name': key, 'type': __type_infer(type_np)}
         for key, type_np in six.iteritems(df.dtypes)
     ]
+    for field in inferred_fields:
+        if 'complex' in field['type']:
+            field['type'] = [
+                'null',
+                __complex_field_infer(df, field['name'], nested_record_names)
+            ]
+    return inferred_fields
 
 
-def __schema_infer(df, times_as_micros):
-    fields = __fields_infer(df)
+def __convert_field_micros_to_millis(field):
+    if isinstance(field, list):
+        for i in range(0, len(field)):
+            field[i] = __convert_field_micros_to_millis(field[i])
+        return field
+    elif isinstance(field, dict):
+        for key, item in field.items():
+            field[key] = __convert_field_micros_to_millis(item)
+        return field
+    elif isinstance(field, str):
+        if field == 'timestamp-micros':
+            return 'timestamp-millis'
+        else:
+            return field
+
+
+def schema_infer(df, times_as_micros=True):
+    """
+    Infers the Avro schema of a pandas DataFrame
+
+    Args:
+        df: DataFrame to infer the schema of
+        times_as_micros:
+            Whether timestamps should be stored as microseconds (default)
+            or milliseconds (as expected by Apache Hive)
+    """
+    fields = __fields_infer(df, {})
     schema = {
         'type': 'record',
         'name': 'Root',
@@ -87,10 +170,7 @@ def __schema_infer(df, times_as_micros):
     # Patch 'timestamp-millis' in
     if not times_as_micros:
         for field in schema['fields']:
-            non_null_type = field['type'][1]
-            if isinstance(non_null_type, dict):
-                if non_null_type.get('logicalType') == 'timestamp-micros':
-                    non_null_type['logicalType'] = 'timestamp-millis'
+            field = __convert_field_micros_to_millis(field)
     return schema
 
 
@@ -147,11 +227,14 @@ def to_avro(file_path_or_buffer, df, schema=None, append=False,
         schema: Dict of Avro schema.
             If it's set None, inferring schema.
         append: Boolean to control if will append to existing file
+        times_as_micros:
+            Whether timestamps should be stored as microseconds (default)
+            or milliseconds (as expected by Apache Hive)
         kwargs: Keyword arguments to fastavro.writer
 
     """
     if schema is None:
-        schema = __schema_infer(df, times_as_micros)
+        schema = schema_infer(df, times_as_micros)
 
     open_mode = 'wb' if not append else 'a+b'
 
