@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 setup(
     name='pandavro',
-    version='1.5.2',
+    version='1.6.0',
     description='The interface between Avro and pandas DataFrame',
     url='https://github.com/ynqa/pandavro',
     author='Makoto Ito',
@@ -13,7 +13,7 @@ setup(
     install_requires=[
         'fastavro>=0.14.11',
         'numpy>=1.7.0',
-        'pandas',
+        'pandas>=1.1.5',
         'six>=1.9',
     ],
     extras_require={
