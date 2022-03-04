@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import six
 
+
 try:
     # Pandas <= 0.23
     from pandas.core.dtypes.dtypes import DatetimeTZDtypeType as DatetimeTZDtype
