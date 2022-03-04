@@ -7,7 +7,7 @@ import six
 
 
 try:
-    # Pandas <= 0.23
+    # Pandas <= 0.23 xxx
     from pandas.core.dtypes.dtypes import DatetimeTZDtypeType as DatetimeTZDtype
 except ImportError:
     # Pandas >= 0.24
