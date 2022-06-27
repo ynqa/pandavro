@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 setup(
     name='pandavro',
-    version='1.5.2',
+    version='1.6.0',
     description='The interface between Avro and pandas DataFrame',
     url='https://github.com/ynqa/pandavro',
     author='Makoto Ito',
@@ -11,13 +11,18 @@ setup(
     license='MIT',
     packages=find_packages(exclude=['example']),
     install_requires=[
-        'fastavro>=0.14.11',
-        'numpy>=1.7.0',
-        'pandas',
-        'six>=1.9',
+        # fixed versions.
+        'fastavro==1.5.1',
+        # Users can designate the various versions of pandas as possible.
+        'pandas>=1.1,<1.3',
+        # Note that the minimum supported version of numpy in pandavro is 1.1
+        # https://pandas.pydata.org/pandas-docs/version/1.1/getting_started/install.html#dependencies
+        'numpy>=1.15.4',
     ],
     extras_require={
-        'tests': ['pytest'],
+        'tests': ['pytest==7.1.2'],
     },
-    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*',
+    # Note that the minimum supported version of numpy in pandavro is 1.1
+    # https://pandas.pydata.org/pandas-docs/version/1.1/getting_started/install.html#python-version-support
+    python_requires='>=3.6.1',
 )
