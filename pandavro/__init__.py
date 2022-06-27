@@ -3,14 +3,7 @@ from collections import OrderedDict
 import fastavro
 import numpy as np
 import pandas as pd
-import six
-
-try:
-    # Pandas <= 0.23
-    from pandas.core.dtypes.dtypes import DatetimeTZDtypeType as DatetimeTZDtype
-except ImportError:
-    # Pandas >= 0.24
-    from pandas import DatetimeTZDtype
+from pandas import DatetimeTZDtype
 
 NUMPY_TO_AVRO_TYPES = {
     np.dtype('?'): 'boolean',
@@ -123,7 +116,7 @@ def __complex_field_infer(df, field, nested_record_names):
 def __fields_infer(df, nested_record_names):
     inferred_fields = [
         {'name': key, 'type': __type_infer(type_np)}
-        for key, type_np in six.iteritems(df.dtypes)
+        for key, type_np in df.dtypes.items()
     ]
     for field in inferred_fields:
         if 'complex' in field['type']:
@@ -191,7 +184,7 @@ def read_avro(file_path_or_buffer, schema=None, **kwargs):
     Returns:
         Class of pd.DataFrame.
     """
-    if isinstance(file_path_or_buffer, six.string_types):
+    if isinstance(file_path_or_buffer, str):
         with open(file_path_or_buffer, 'rb') as f:
             return __file_to_dataframe(f, schema, **kwargs)
     else:
@@ -238,7 +231,7 @@ def to_avro(file_path_or_buffer, df, schema=None, append=False,
 
     open_mode = 'wb' if not append else 'a+b'
 
-    if isinstance(file_path_or_buffer, six.string_types):
+    if isinstance(file_path_or_buffer, str):
         with open(file_path_or_buffer, open_mode) as f:
             fastavro.writer(f, schema=schema,
                             records=df.to_dict('records'), **kwargs)
