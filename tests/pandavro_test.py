@@ -70,6 +70,7 @@ def test_schema_infer_complex_types(dataframe):
                 {'type': ['null', 'double'], 'name': 'Float64'},
                 {'type': ['null', 'long'], 'name': 'Int64'},
                 {'type': ['null', 'string'], 'name': 'String'},
+                {'type': ['null', 'bytes'], 'name': 'Bytes'},
                 {'type': ['null', {
                     'fields':
                         [
