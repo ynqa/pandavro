@@ -1,12 +1,22 @@
-dist: xenial
 language: python
-python:
-- 3.8
-- 3.9
+jobs:
+  include:
+    - os: linux
+      dist: xenial
+      python:
+      - 3.8
+      - 3.9
+    - os: osx
+      osx_image: xcode7.2
+      python:
+        - 3.8
+        - 3.9
+
 install:
-- pip install -e .[tests]
+  - pip install -e .[tests]
 script:
-- pytest -v tests
+  - pytest -v tests
+
 deploy:
   provider: pypi
   user: pyncha
