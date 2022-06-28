@@ -9,6 +9,7 @@ from io import BytesIO
 
 @pytest.fixture
 def dataframe():
+    strings = ['foo', 'bar', 'foo', 'bar', 'foo', 'bar', 'foo', 'bar']
     return pd.DataFrame({"Boolean": [True, False, True, False, True, False, True, False],
                          "DateTime64": [pd.Timestamp('20190101'), pd.Timestamp('20190102'),
                                         pd.Timestamp('20190103'), pd.Timestamp('20190104'),
@@ -16,7 +17,9 @@ def dataframe():
                                         pd.Timestamp('20190107'), pd.Timestamp('20190108')],
                          "Float64": np.random.randn(8),
                          "Int64": np.random.randint(0, 10, 8),
-                         "String": ['foo', 'bar', 'foo', 'bar', 'foo', 'bar', 'foo', 'bar']})
+                         "String": ['foo', 'bar', 'foo', 'bar', 'foo', 'bar', 'foo', 'bar'],
+                         "Bytes": [string.encode() for string in strings],
+                         })
 
 
 def test_schema_infer(dataframe):
@@ -31,6 +34,7 @@ def test_schema_infer(dataframe):
                 {'type': ['null', 'double'], 'name': 'Float64'},
                 {'type': ['null', 'long'], 'name': 'Int64'},
                 {'type': ['null', 'string'], 'name': 'String'},
+                {'type': ['null', 'bytes'], 'name': 'Bytes'},
             ]
     }
     assert expect == pdx.schema_infer(dataframe, times_as_micros=True)
