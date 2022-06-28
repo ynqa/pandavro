@@ -1,19 +1,20 @@
-import pytest
+import subprocess
+import timeit
+from io import BytesIO
+from tempfile import NamedTemporaryFile
+
 import numpy as np
 import pandas as pd
+import pytest
+from pandas.util.testing import assert_frame_equal
+
 import pandavro as pdx
-from tempfile import NamedTemporaryFile
-from pandas.testing import assert_frame_equal
-from io import BytesIO
 
 
 @pytest.fixture
 def dataframe():
     return pd.DataFrame({"Boolean": [True, False, True, False, True, False, True, False],
-                         "DateTime64": [pd.Timestamp('20190101'), pd.Timestamp('20190102'),
-                                        pd.Timestamp('20190103'), pd.Timestamp('20190104'),
-                                        pd.Timestamp('20190105'), pd.Timestamp('20190106'),
-                                        pd.Timestamp('20190107'), pd.Timestamp('20190108')],
+                         "DateTime64": pd.date_range('20190101', '20190108', freq="1D", tz="UTC"),
                          "Float64": np.random.randn(8),
                          "Int64": np.random.randint(0, 10, 8),
                          "String": ['foo', 'bar', 'foo', 'bar', 'foo', 'bar', 'foo', 'bar']})
@@ -107,7 +108,7 @@ def test_buffer_e2e(dataframe):
     pdx.to_avro(tf.name, dataframe)
     with open(tf.name, 'rb') as f:
         expect = pdx.read_avro(BytesIO(f.read()))
-        expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
+        # expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
     assert_frame_equal(expect, dataframe)
 
 
@@ -115,7 +116,7 @@ def test_file_path_e2e(dataframe):
     tf = NamedTemporaryFile()
     pdx.to_avro(tf.name, dataframe)
     expect = pdx.read_avro(tf.name)
-    expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
+    # expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
     assert_frame_equal(expect, dataframe)
 
 
@@ -123,7 +124,7 @@ def test_delegation(dataframe):
     tf = NamedTemporaryFile()
     pdx.to_avro(tf.name, dataframe)
     expect = pdx.from_avro(tf.name)
-    expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
+    # expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
     assert_frame_equal(expect, dataframe)
 
 
@@ -132,7 +133,7 @@ def test_append(dataframe):
     pdx.to_avro(tf.name, dataframe[0:int(dataframe.shape[0] / 2)])
     pdx.to_avro(tf.name, dataframe[int(dataframe.shape[0] / 2):], append=True)
     expect = pdx.from_avro(tf.name)
-    expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
+    # expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
     assert_frame_equal(expect, dataframe)
 
 
@@ -147,15 +148,149 @@ def test_dataframe_kwargs(dataframe):
     # exclude columns
     columns = ['String', 'Boolean']
     expect = pdx.read_avro(tf.name, exclude=columns)
-    expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
+    # expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
     df = dataframe.drop(columns, axis=1)
     assert_frame_equal(expect, df)
     # specify index
     index = 'String'
     expect = pdx.read_avro(tf.name, index=index)
-    expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
+    # expect['DateTime64'] = expect['DateTime64'].astype(np.dtype('datetime64[ns]'))
     df = dataframe.set_index(index)
     assert_frame_equal(expect, df)
+
+
+@pytest.fixture
+def dataframe_na_dtypes():
+    def randints(dtype, length=8, nones=2):
+        "Make random ints with 'nones' NAs randomly placed"
+        s = pd.Series(list(np.random.randint(0, 10, 8)), dtype=dtype)
+        for i in np.random.choice(range(length), size=nones):
+            s[i] = None
+        return s
+
+    return pd.DataFrame({
+        "Boolean": [True, False, True, False, True, False, True, False],
+        "pdBoolean": pd.Series([True, False, True, False, True, False, True, False], dtype=pd.BooleanDtype()),
+        "DateTime64": pd.date_range('20190101', '20190108', freq="1D", tz="UTC"),
+        "Float64": np.random.randn(8),
+        "String": ['foo', 'bar', 'foo', 'bar', 'foo', 'bar', 'foo', 'bar'],
+        "pdString": pd.Series(['foo', 'bar', 'foo', 'bar', 'foo', 'bar', 'foo', 'bar'], dtype=pd.StringDtype()),
+        "Int8": randints(dtype=np.int8, nones=0),
+        "Int16": randints(dtype=np.int16, nones=0),
+        "Int32": randints(dtype=np.int32, nones=0),
+        "Int64": randints(dtype=np.int64, nones=0),
+        "UInt8": randints(dtype=np.uint8, nones=0),
+        "UInt16": randints(dtype=np.uint16, nones=0),
+        "UInt32": randints(dtype=np.uint32, nones=0),
+        "UInt64": randints(dtype=np.uint64, nones=0),
+        "pdInt8": randints(dtype=pd.Int8Dtype()),
+        "pdInt16": randints(dtype=pd.Int16Dtype()),
+        "pdInt32": randints(dtype=pd.Int32Dtype()),
+        "pdInt64": randints(dtype=pd.Int64Dtype()),
+        "pdUInt8": randints(dtype=pd.UInt8Dtype()),
+        "pdUInt16": randints(dtype=pd.UInt16Dtype()),
+        "pdUInt32": randints(dtype=pd.UInt32Dtype()),
+        # "pdUInt64": randints(dtype=pd.UInt64Dtype()),
+    })
+
+
+def test_advanced_dtypes(dataframe_na_dtypes):
+    "Should be able to write and read Pandas 1.0 NaN-compatible dtypes"
+    tf = NamedTemporaryFile()
+    pdx.to_avro(tf.name, dataframe_na_dtypes)
+
+    # Bools and datetime
+    columns = ['Boolean', 'pdBoolean', 'DateTime64']
+    expect = pdx.read_avro(tf.name, columns=columns, na_dtypes=True)
+    df = dataframe_na_dtypes[columns]
+    # We load everything as NA-dtypes
+    df["Boolean"] = df["Boolean"].astype(pd.BooleanDtype())
+    assert_frame_equal(expect, df)
+
+    # Floats and ints
+    columns = ['Float64', 'Int64', 'pdInt64']
+    expect = pdx.read_avro(tf.name, columns=columns, na_dtypes=True)
+    df = dataframe_na_dtypes[columns]
+    df["Int64"] = df["Int64"].astype(pd.Int64Dtype())
+    assert_frame_equal(expect, df)
+
+    # Strings
+    columns = ['String', 'pdString']
+    expect = pdx.read_avro(tf.name, columns=columns, na_dtypes=True)
+    df = dataframe_na_dtypes[columns]
+    df["String"] = df["String"].astype(pd.StringDtype())
+    assert_frame_equal(expect, df)
+
+
+def test_ints(dataframe_na_dtypes):
+    "Should write and read (unsigned) ints"
+    tf = NamedTemporaryFile()
+    pdx.to_avro(tf.name, dataframe_na_dtypes)
+
+    print(subprocess.run(["fastavro", "--schema", tf.name]))
+
+    # Numpy Ints
+    # FIXME: fastavro reads all ints as np.int64
+    columns = ['Int8', 'Int16', 'Int32', 'Int64']
+    expect = pdx.read_avro(tf.name, columns=columns, na_dtypes=False)
+    df = dataframe_na_dtypes[columns]
+    # Avro does not have the concept of 8 or 16-bit int
+    df["Int8"] = df["Int8"].astype(np.int64)
+    df["Int16"] = df["Int16"].astype(np.int64)
+    df["Int32"] = df["Int32"].astype(np.int64)
+    assert_frame_equal(expect, df)
+
+    # Numpy UInts
+    # FIXME: fastavro reads all uints as np.int64
+    columns = ['UInt8', 'UInt16', 'UInt32', 'UInt64']
+    expect = pdx.read_avro(tf.name, columns=columns, na_dtypes=False)
+    df = dataframe_na_dtypes[columns]
+    # Avro does not have the concept of 8 or 16-bit int
+    df["UInt8"] = df["UInt8"].astype(np.int64)
+    df["UInt16"] = df["UInt16"].astype(np.int64)
+    df["UInt32"] = df["UInt32"].astype(np.int64)
+    df["UInt64"] = df["UInt64"].astype(np.int64)
+    assert_frame_equal(expect, df)
+
+    # Pandas Ints
+    columns = ['pdInt8', 'pdInt16', 'pdInt32', 'pdInt64']
+    expect = pdx.read_avro(tf.name, columns=columns, na_dtypes=True)
+    df = dataframe_na_dtypes[columns]
+    # Avro does not have the concept of 8 or 16-bit int
+    df["pdInt8"] = df["pdInt8"].astype(pd.Int32Dtype())
+    df["pdInt16"] = df["pdInt16"].astype(pd.Int32Dtype())
+    assert_frame_equal(expect, df)
+
+    # Pandas UInts
+    # fastavro does not seem to support writing 64-bit unsigned ints
+    columns = ['pdUInt8', 'pdUInt16', 'pdUInt32']
+    expect = pdx.read_avro(tf.name, columns=columns, na_dtypes=True)
+    df = dataframe_na_dtypes[columns]
+    df["pdUInt8"] = df["pdUInt8"].astype(pd.UInt32Dtype())
+    df["pdUInt16"] = df["pdUInt16"].astype(pd.UInt32Dtype())
+    assert_frame_equal(expect, df, check_dtype=False)
+
+
+def test_benchmark_advanced_dtypes(dataframe):
+    "Should not be much slower for basic dtype dataframes with Pandas NA-dtypes preprocessing"
+    reps = 1000
+
+    t1 = timeit.timeit(
+        "pdx.to_avro(filename, df)",
+        globals=dict(pdx=pdx, filename=NamedTemporaryFile().name, df=dataframe),
+        number=reps
+    )
+
+    t2 = timeit.timeit(
+        "pdx.to_avro(filename, df, _test_preprocess_off=True)",
+        globals=dict(pdx=pdx, filename=NamedTemporaryFile().name, df=dataframe),
+        number=reps
+    )
+
+    # 20% was arbitrarily chosen to give some leeway in this slightly random benchmark
+    # Observed differences are very small
+    assert abs(t1 - t2) / min(t1, t2) < .2, "Performance difference is not below 20%, " \
+                                            "{:.3f}s with and {:.3f}s without".format(t1, t2)
 
 
 if __name__ == '__main__':

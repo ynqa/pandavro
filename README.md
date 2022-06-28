@@ -40,15 +40,23 @@ Pandavro can handle these primitive types:
 | np.unicode_                                   | string              |
 | np.object_                                    | string              |
 | np.int8, np.int16, np.int32                   | int                 |
-| np.uint8, np.uint16, np.uint32                | int                 |
-| np.int64, np.uint64                           | long                |
+| np.uint8, np.uint16, np.uint32                | "unsigned" int*     |
+| np.uint64                                     | "unsigned" long*    |
+| np.int64, pd.Int64Dtype                       | long                |
 | pd.Int8Dtype, pd.Int16Dtype, pd.Int32Dtype    | int                 |
-| pd.UInt8Dtype, pd.UInt16Dtype, pd.UInt32Dtype | "unsigned" int      |
-| pd.Int64Dtype                                 | long                |
-| pd.UInt64Dtype                                | "unsigned" long     |
+| pd.UInt8Dtype, pd.UInt16Dtype, pd.UInt32Dtype | "unsigned" int*     |
+| pd.StringDtype**                              | string              |
+| pd.BooleanDtype**                             | boolean             |
 
-Pandas 0.24 added support for nullable integers, which we can easily represent in Avro. We represent the unsigned versions of these integers by adding the non-standard "unsigned" flag as such: `{'type': 'int', 'unsigned': True}`.
+\* We represent the unsigned versions of these integers by adding the non-standard "unsigned" flag as such: `{'type': 'int', 'unsigned': True}`.  Pandas 0.24 added support for nullable integers. Writing `pd.UInt64Dtype` is not supported by fastavro.
 
+\** Pandas 1.0.0 added support for nullable string and boolean datatypes.
+
+Pandavro also supports these logical types:
+
+| Numpy/pandas type                               | Avro logical type  |
+|-------------------------------------------------|--------------------|
+| np.datetime64, pd.DatetimeTZDtype, pd.Timestamp | timestamp-micros*  |
 If a boolean column includes empty values, pandas classifies the column as having a dtype of `object` - this is accounted for in complex column handling.
 
 
@@ -79,10 +87,29 @@ And these logical types:
 Note that the timestamp must not contain any timezone (it must be naive) because Avro does not support timezones.
 Timestamps are encoded as microseconds by default, but can be encoded in milliseconds by using `times_as_micros=False`
 
-If you don't want pandavro to infer this schema but instead define it yourself, pass it using the `schema` kwarg to `to_avro`.
+\* If passed `to_avro(..., times_as_micros=False)`, this has a millisecond resolution.
 
+Due to [an inherent design choice in fastavro](https://github.com/fastavro/fastavro/issues/409), it interprets a *naive* datetime in the system's timezone before serializing it. This has the consequence that your *naive* datetime will not correctly roundtrip to and from an Avro file. *Always indicate a timezone* to avoid the system timezone introducing problems.
+
+If you don't want pandavro to infer the schema but instead define it yourself, pass it using the `schema` kwarg to `to_avro`.
+
+## Loading Pandas nullable datatypes
+The nullable datatypes indicated in the table above are easily written to Avro, but loading them introduces ambiguity as we can use either the old, default or these new datatypes. We solve this by using a special keyword when loading to force conversion to these new NA-supporting datatypes:
+
+```python
+import pandavro as pdx
+
+# Load datatypes as NA-compatible datatypes where possible
+pdx.read_avro(path, na_dtypes=True)
+```
+
+This is *different* from [convert_dtypes](https://pandas.pydata.org/docs/whatsnew/v1.0.0.html#convert-dtypes-method-to-ease-use-of-supported-extension-dtypes) as it does not infer the datatype based on the actual values, but it looks at the Avro schema so is deterministic and not dependent on the actual values.
+
+Also note that, in "normal" mode, numpy int/uint dtypes are all read back as `np.int64` due to how fastavro reads them. (This could be worked around by converting type after loading, PRs welcome.) In `na_dtypes=True` mode they are loaded correctly as Pandas NA-dtypes, but with no less than 32 bits of resolution (less is not supported by Avro so we can not infer it from the schema).
 
 ## Example
+
+See `tests/pandavro_test.py` for more examples.
 
 ```python
 import os
@@ -94,12 +121,17 @@ OUTPUT_PATH='{}/example.avro'.format(os.path.dirname(__file__))
 
 
 def main():
-    df = pd.DataFrame({"Boolean": [True, False, True, False],
-                       "Float64": np.random.randn(4),
-                       "Int64": np.random.randint(0, 10, 4),
-                       "String": ['foo', 'bar', 'foo', 'bar'],
-                       "DateTime64": [pd.Timestamp('20190101'), pd.Timestamp('20190102'),
-                                      pd.Timestamp('20190103'), pd.Timestamp('20190104')]})
+    df = pd.DataFrame({
+        "Boolean": [True, False, True, False],
+        "pdBoolean": pd.Series([True, None, True, False], dtype=pd.BooleanDtype()),
+        "Float64": np.random.randn(4),
+        "Int64": np.random.randint(0, 10, 4),
+        "pdInt64":  pd.Series(list(np.random.randint(0, 10, 3)) + [None], dtype=pd.Int64Dtype()),
+        "String": ['foo', 'bar', 'foo', 'bar'],
+        "pdString": pd.Series(['foo', 'bar', 'foo', None], dtype=pd.StringDtype()),
+        "DateTime64": [pd.Timestamp('20190101'), pd.Timestamp('20190102'),
+                       pd.Timestamp('20190103'), pd.Timestamp('20190104')]
+    })
 
     pdx.to_avro(OUTPUT_PATH, df)
     saved = pdx.read_avro(OUTPUT_PATH)
