@@ -1,12 +1,9 @@
-import logging
 from collections import OrderedDict
 
 import fastavro
 import numpy as np
 import pandas as pd
 from pandas import DatetimeTZDtype
-
-logger = logging.getLogger(__name__)
 
 NUMPY_TO_AVRO_TYPES = {
     np.dtype('?'): 'boolean',
@@ -19,7 +16,7 @@ NUMPY_TO_AVRO_TYPES = {
     np.uint32: {'type': 'int', 'unsigned': True},
     np.int64: 'long',
     np.uint64: {'type': 'long', 'unsigned': True},
-    np.dtype('O'): 'string',  # FIXME: Don't automatically store objects as strings
+    np.dtype('O'): 'complex',  # FIXME: Don't automatically store objects as strings
     np.unicode_: 'string',
     np.float32: 'float',
     np.float64: 'double',
@@ -38,31 +35,22 @@ PANDAS_TO_PYTHON_TYPES = {}
 
 # Pandas 0.24 added support for nullable integers. Include those in the supported
 # integer dtypes if present, otherwise ignore them.
-try:
-    # Int8 and Int16 don't exist in Pandas NA-dtypes
-    AVRO_TO_PANDAS_TYPES['int'] = pd.Int32Dtype
-    AVRO_TO_PANDAS_TYPES['long'] = pd.Int64Dtype
-    AVRO_TO_PANDAS_UNSIGNED_TYPES['int'] = pd.UInt32Dtype
 
-    logger.debug("Imported pandas >=0.24 integer datatypes")
-except AttributeError:
-    logger.debug("Did not import pandas >=0.24 integer datatypes")
+# Int8 and Int16 don't exist in Pandas NA-dtypes
+AVRO_TO_PANDAS_TYPES['int'] = pd.Int32Dtype
+AVRO_TO_PANDAS_TYPES['long'] = pd.Int64Dtype
+AVRO_TO_PANDAS_UNSIGNED_TYPES['int'] = pd.UInt32Dtype
 
-try:
-    # Recognize these Pandas dtypes
-    NUMPY_TO_AVRO_TYPES[pd.StringDtype()] = 'string'
-    NUMPY_TO_AVRO_TYPES[pd.BooleanDtype()] = 'boolean'
+# Recognize these Pandas dtypes
+NUMPY_TO_AVRO_TYPES[pd.StringDtype()] = 'string'
+NUMPY_TO_AVRO_TYPES[pd.BooleanDtype()] = 'boolean'
 
-    # Convert these to python first
-    PANDAS_TO_PYTHON_TYPES[np.bool_] = bool
+# Convert these to python first
+PANDAS_TO_PYTHON_TYPES[np.bool_] = bool
 
-    # Indicate the optional return datatype
-    AVRO_TO_PANDAS_TYPES['string'] = pd.StringDtype
-    AVRO_TO_PANDAS_TYPES['boolean'] = pd.BooleanDtype
-
-    logger.debug("Imported pandas >=1.0.0 datatypes")
-except AttributeError:
-    logger.debug("Did not import pandas >=1.0.0 datatypes")
+# Indicate the optional return datatype
+AVRO_TO_PANDAS_TYPES['string'] = pd.StringDtype
+AVRO_TO_PANDAS_TYPES['boolean'] = pd.BooleanDtype
 
 
 def __type_infer(t):
@@ -266,7 +254,7 @@ def from_avro(file_path_or_buffer, schema=None, na_dtypes=False, **kwargs):
     return read_avro(file_path_or_buffer, schema, na_dtypes=na_dtypes, **kwargs)
 
 
-def _preprocess_dicts(l):
+def __preprocess_dicts(l):
     "Preprocess list of dicts inplace for fastavro compatibility"
     for d in l:
         for k, v in d.items():
@@ -301,13 +289,8 @@ def to_avro(file_path_or_buffer, df, schema=None, append=False,
         schema = schema_infer(df, times_as_micros)
 
     open_mode = 'wb' if not append else 'a+b'
-
-    # This special kwarg is only to enable testing performance difference
-    if kwargs.get("_test_preprocess_off"):
-        kwargs.pop("_test_preprocess_off")
-        records = df.to_dict('records')
-    else:
-        records = _preprocess_dicts(df.to_dict('records'))
+    
+    records = __preprocess_dicts(df.to_dict('records'))
 
     if isinstance(file_path_or_buffer, str):
         with open(file_path_or_buffer, open_mode) as f:
