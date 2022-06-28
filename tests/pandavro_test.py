@@ -52,6 +52,7 @@ def test_schema_infer_times_as_millis(dataframe):
                 {'type': ['null', 'double'], 'name': 'Float64'},
                 {'type': ['null', 'long'], 'name': 'Int64'},
                 {'type': ['null', 'string'], 'name': 'String'},
+                {'type': ['null', 'bytes'], 'name': 'Bytes'},
             ]
     }
     assert expect == pdx.schema_infer(dataframe, times_as_micros=False)
@@ -102,6 +103,7 @@ def test_fields_infer(dataframe):
         {'type': ['null', 'double'], 'name': 'Float64'},
         {'type': ['null', 'long'], 'name': 'Int64'},
         {'type': ['null', 'string'], 'name': 'String'},
+        {'type': ['null', 'bytes'], 'name': 'Bytes'},
     ]
     assert expect == pdx.__fields_infer(dataframe, nested_record_names={})
 
