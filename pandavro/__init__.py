@@ -301,13 +301,8 @@ def to_avro(file_path_or_buffer, df, schema=None, append=False,
         schema = schema_infer(df, times_as_micros)
 
     open_mode = 'wb' if not append else 'a+b'
-
-    # This special kwarg is only to enable testing performance difference
-    if kwargs.get("_test_preprocess_off"):
-        kwargs.pop("_test_preprocess_off")
-        records = df.to_dict('records')
-    else:
-        records = _preprocess_dicts(df.to_dict('records'))
+    
+    records = _preprocess_dicts(df.to_dict('records'))
 
     if isinstance(file_path_or_buffer, str):
         with open(file_path_or_buffer, open_mode) as f:
