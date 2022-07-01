@@ -17,7 +17,7 @@ def dataframe():
                                         pd.Timestamp('20190107'), pd.Timestamp('20190108')],
                          "Float64": np.random.randn(8),
                          "Int64": np.random.randint(0, 10, 8),
-                         "String": ['foo', 'bar', 'foo', 'bar', 'foo', 'bar', 'foo', 'bar'],
+                         "String": strings,
                          "Bytes": [string.encode() for string in strings],
                          })
 
