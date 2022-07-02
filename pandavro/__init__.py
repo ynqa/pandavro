@@ -78,6 +78,7 @@ def __complex_field_infer(df, field, nested_record_names):
     NoneType = type(None)
     bool_types = {bool, NoneType}
     string_types = {str, NoneType}
+    byte_types = {bytes, NoneType}
     record_types = {dict, OrderedDict, NoneType}
     array_types = {list, NoneType}
 
@@ -91,6 +92,10 @@ def __complex_field_infer(df, field, nested_record_names):
     # its type as np.dtype('O'), so we have to double check for it here.
     if base_field_types.issubset(bool_types):
         return 'boolean'
+    # Bytes type - have to check for bytes first, in case a column contains
+    # entirely 'None's
+    if base_field_types.issubset(byte_types):
+        return 'bytes'
     # Record type
     elif base_field_types.issubset(record_types):
         records = df.loc[~df[field].isna(), field].reset_index(drop=True)

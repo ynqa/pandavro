@@ -13,11 +13,14 @@ import pandavro as pdx
 
 @pytest.fixture
 def dataframe():
+    strings = ['foo', 'bar', 'foo', 'bar', 'foo', 'bar', 'foo', 'bar']
     return pd.DataFrame({"Boolean": [True, False, True, False, True, False, True, False],
                          "DateTime64": pd.date_range('20190101', '20190108', freq="1D"),
                          "Float64": np.random.randn(8),
                          "Int64": np.random.randint(0, 10, 8),
-                         "String": ['foo', 'bar', 'foo', 'bar', 'foo', 'bar', 'foo', 'bar']})
+                         "String": strings,
+                         "Bytes": [string.encode() for string in strings],
+                         })
 
 
 def test_schema_infer(dataframe):
@@ -32,6 +35,7 @@ def test_schema_infer(dataframe):
                 {'type': ['null', 'double'], 'name': 'Float64'},
                 {'type': ['null', 'long'], 'name': 'Int64'},
                 {'type': ['null', 'string'], 'name': 'String'},
+                {'type': ['null', 'bytes'], 'name': 'Bytes'},
             ]
     }
     assert expect == pdx.schema_infer(dataframe, times_as_micros=True)
@@ -49,6 +53,7 @@ def test_schema_infer_times_as_millis(dataframe):
                 {'type': ['null', 'double'], 'name': 'Float64'},
                 {'type': ['null', 'long'], 'name': 'Int64'},
                 {'type': ['null', 'string'], 'name': 'String'},
+                {'type': ['null', 'bytes'], 'name': 'Bytes'},
             ]
     }
     assert expect == pdx.schema_infer(dataframe, times_as_micros=False)
@@ -66,6 +71,7 @@ def test_schema_infer_complex_types(dataframe):
                 {'type': ['null', 'double'], 'name': 'Float64'},
                 {'type': ['null', 'long'], 'name': 'Int64'},
                 {'type': ['null', 'string'], 'name': 'String'},
+                {'type': ['null', 'bytes'], 'name': 'Bytes'},
                 {'type': ['null', {
                     'fields':
                         [
@@ -99,6 +105,7 @@ def test_fields_infer(dataframe):
         {'type': ['null', 'double'], 'name': 'Float64'},
         {'type': ['null', 'long'], 'name': 'Int64'},
         {'type': ['null', 'string'], 'name': 'String'},
+        {'type': ['null', 'bytes'], 'name': 'Bytes'},
     ]
     assert expect == pdx.__fields_infer(dataframe, nested_record_names={})
 
