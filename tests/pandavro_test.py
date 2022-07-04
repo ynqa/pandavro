@@ -1,6 +1,7 @@
 import subprocess
 import timeit
 from io import BytesIO
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 import numpy as np
@@ -123,6 +124,14 @@ def test_file_path_e2e(dataframe):
     tf = NamedTemporaryFile()
     pdx.to_avro(tf.name, dataframe)
     expect = pdx.read_avro(tf.name)
+    expect['DateTime64'] = expect['DateTime64'].apply(lambda t: t.tz_localize(None))
+    assert_frame_equal(expect, dataframe)
+
+
+def test_pathlib_e2e(dataframe):
+    tf = NamedTemporaryFile()
+    pdx.to_avro(Path(tf.name), dataframe)
+    expect = pdx.read_avro(Path(tf.name))
     expect['DateTime64'] = expect['DateTime64'].apply(lambda t: t.tz_localize(None))
     assert_frame_equal(expect, dataframe)
 
