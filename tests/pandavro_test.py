@@ -153,14 +153,18 @@ def test_append(dataframe):
     assert_frame_equal(expect, dataframe)
 
 
-def test_dataframe_kwargs(dataframe):
+def test_dataframe_subset_columns(dataframe):
     tf = NamedTemporaryFile()
     pdx.to_avro(tf.name, dataframe)
-    # include columns
-    columns = ['Boolean', 'Int64']
+    columns = ['Boolean', 'Int64', 'String']
     expect = pdx.read_avro(tf.name, columns=columns)
     df = dataframe[columns]
     assert_frame_equal(expect, df)
+
+
+def test_dataframe_kwargs(dataframe):
+    tf = NamedTemporaryFile()
+    pdx.to_avro(tf.name, dataframe)
     # exclude columns
     columns = ['String', 'Boolean']
     expect = pdx.read_avro(tf.name, exclude=columns)
