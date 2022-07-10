@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from pathlib import Path
 
 import fastavro
 import numpy as np
@@ -226,7 +227,7 @@ def read_avro(file_path_or_buffer, schema=None, na_dtypes=False, **kwargs):
     Avro file reader.
 
     Args:
-        file_path_or_buffer: Input file path or file-like object.
+        file_path_or_buffer: Input file path (str or pathlib.Path) or file-like object.
         schema: Avro schema.
         na_dtypes: Read int, long, string, boolean types back as Pandas NA-supporting datatypes.
         **kwargs: Keyword argument to pandas.DataFrame.from_records.
@@ -234,6 +235,11 @@ def read_avro(file_path_or_buffer, schema=None, na_dtypes=False, **kwargs):
     Returns:
         Class of pd.DataFrame.
     """
+    if isinstance(file_path_or_buffer, Path):
+        if not file_path_or_buffer.exists():
+            raise FileExistsError
+        file_path_or_buffer = str(file_path_or_buffer)
+
     if isinstance(file_path_or_buffer, str):
         with open(file_path_or_buffer, 'rb') as f:
             return __file_to_dataframe(f, schema, na_dtypes=na_dtypes, **kwargs)
@@ -280,7 +286,7 @@ def to_avro(file_path_or_buffer, df, schema=None, append=False,
 
     Args:
         file_path_or_buffer:
-            Output file path or file-like object.
+            Output file path (str or pathlib.Path) or file-like object.
         df: pd.DataFrame.
         schema: Dict of Avro schema.
             If it's set None, inferring schema.
@@ -294,8 +300,11 @@ def to_avro(file_path_or_buffer, df, schema=None, append=False,
         schema = schema_infer(df, times_as_micros)
 
     open_mode = 'wb' if not append else 'a+b'
-    
+
     records = __preprocess_dicts(df.to_dict('records'))
+
+    if isinstance(file_path_or_buffer, Path):
+        file_path_or_buffer = str(file_path_or_buffer)
 
     if isinstance(file_path_or_buffer, str):
         with open(file_path_or_buffer, open_mode) as f:
