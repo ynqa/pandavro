@@ -1,5 +1,6 @@
 from collections import OrderedDict
 from pathlib import Path
+from typing import Optional, Iterable
 
 import fastavro
 import numpy as np
@@ -183,7 +184,7 @@ def schema_infer(df, times_as_micros=True):
     return schema
 
 
-def __file_to_dataframe(f, schema, na_dtypes=False, columns=None, **kwargs):
+def __file_to_dataframe(f, schema, na_dtypes=False, columns: Optional[Iterable[str]] = None, **kwargs):
     reader = fastavro.reader(f, reader_schema=schema)
     if columns is None:
         records = list(reader)
@@ -191,6 +192,7 @@ def __file_to_dataframe(f, schema, na_dtypes=False, columns=None, **kwargs):
     else:
         columns_set = frozenset(columns)
         records = [{k: v for k, v in row.items() if k in columns_set} for row in reader]
+
     df = pd.DataFrame.from_records(records, columns=columns, **kwargs)
 
     def _filter(typelist):
@@ -228,7 +230,7 @@ def __file_to_dataframe(f, schema, na_dtypes=False, columns=None, **kwargs):
     return df
 
 
-def read_avro(file_path_or_buffer, schema=None, na_dtypes=False, columns=None, **kwargs):
+def read_avro(file_path_or_buffer, schema=None, na_dtypes=False, columns: Optional[Iterable[str]] = None, **kwargs):
     """
     Avro file reader.
 
