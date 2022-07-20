@@ -1,5 +1,6 @@
 from collections import OrderedDict
 from pathlib import Path
+from typing import Optional, Iterable
 
 import fastavro
 import numpy as np
@@ -183,9 +184,16 @@ def schema_infer(df, times_as_micros=True):
     return schema
 
 
-def __file_to_dataframe(f, schema, na_dtypes=False, **kwargs):
+def __file_to_dataframe(f, schema, na_dtypes=False, columns: Optional[Iterable[str]] = None, **kwargs):
     reader = fastavro.reader(f, reader_schema=schema)
-    df = pd.DataFrame.from_records(list(reader), **kwargs)
+    if columns is None:
+        records = list(reader)
+    # To free up some RAM we can select a subset of columns
+    else:
+        columns_set = frozenset(columns)
+        records = [{k: v for k, v in row.items() if k in columns_set} for row in reader]
+
+    df = pd.DataFrame.from_records(records, columns=columns, **kwargs)
 
     def _filter(typelist):
         # It's a string, we return it directly
@@ -222,7 +230,7 @@ def __file_to_dataframe(f, schema, na_dtypes=False, **kwargs):
     return df
 
 
-def read_avro(file_path_or_buffer, schema=None, na_dtypes=False, **kwargs):
+def read_avro(file_path_or_buffer, schema=None, na_dtypes=False, columns: Optional[Iterable[str]] = None, **kwargs):
     """
     Avro file reader.
 
@@ -230,6 +238,7 @@ def read_avro(file_path_or_buffer, schema=None, na_dtypes=False, **kwargs):
         file_path_or_buffer: Input file path (str or pathlib.Path) or file-like object.
         schema: Avro schema.
         na_dtypes: Read int, long, string, boolean types back as Pandas NA-supporting datatypes.
+        columns: Sequence, subset of columns to load in memory.
         **kwargs: Keyword argument to pandas.DataFrame.from_records.
 
     Returns:
@@ -242,9 +251,11 @@ def read_avro(file_path_or_buffer, schema=None, na_dtypes=False, **kwargs):
 
     if isinstance(file_path_or_buffer, str):
         with open(file_path_or_buffer, 'rb') as f:
-            return __file_to_dataframe(f, schema, na_dtypes=na_dtypes, **kwargs)
+            return __file_to_dataframe(f, schema, na_dtypes=na_dtypes, columns=columns, **kwargs)
     else:
-        return __file_to_dataframe(file_path_or_buffer, schema, na_dtypes=na_dtypes, **kwargs)
+        return __file_to_dataframe(
+            file_path_or_buffer, schema, na_dtypes=na_dtypes, columns=columns, **kwargs
+        )
 
 
 def from_avro(file_path_or_buffer, schema=None, na_dtypes=False, **kwargs):
