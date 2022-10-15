@@ -1,5 +1,5 @@
 import subprocess
-import timeit
+from datetime import timezone
 from io import BytesIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -16,12 +16,16 @@ import pandavro as pdx
 def dataframe():
     strings = ['foo', 'bar', 'foo', 'bar', 'foo', 'bar', 'foo', 'bar']
     return pd.DataFrame({"Boolean": [True, False, True, False, True, False, True, False],
-                         "DateTime64": pd.date_range('20190101', '20190108', freq="1D"),
+                         "DateTime64": pd.date_range('20190101', '20190108', freq="1D", tz=timezone.utc),
                          "Float64": np.random.randn(8),
                          "Int64": np.random.randint(0, 10, 8),
                          "String": strings,
                          "Bytes": [string.encode() for string in strings],
                          })
+
+
+def process_datetime64_column(df):
+    df['DateTime64'] = df['DateTime64'].apply(lambda t: t.tz_convert(timezone.utc))
 
 
 def test_schema_infer(dataframe):
@@ -116,7 +120,7 @@ def test_buffer_e2e(dataframe):
     pdx.to_avro(tf.name, dataframe)
     with open(tf.name, 'rb') as f:
         expect = pdx.read_avro(BytesIO(f.read()))
-        expect['DateTime64'] = expect['DateTime64'].apply(lambda t: t.tz_localize(None))
+        process_datetime64_column(expect)
     assert_frame_equal(expect, dataframe)
 
 
@@ -124,7 +128,7 @@ def test_file_path_e2e(dataframe):
     tf = NamedTemporaryFile()
     pdx.to_avro(tf.name, dataframe)
     expect = pdx.read_avro(tf.name)
-    expect['DateTime64'] = expect['DateTime64'].apply(lambda t: t.tz_localize(None))
+    process_datetime64_column(expect)
     assert_frame_equal(expect, dataframe)
 
 
@@ -132,7 +136,7 @@ def test_pathlib_e2e(dataframe):
     tf = NamedTemporaryFile()
     pdx.to_avro(Path(tf.name), dataframe)
     expect = pdx.read_avro(Path(tf.name))
-    expect['DateTime64'] = expect['DateTime64'].apply(lambda t: t.tz_localize(None))
+    process_datetime64_column(expect)
     assert_frame_equal(expect, dataframe)
 
 
@@ -140,7 +144,7 @@ def test_delegation(dataframe):
     tf = NamedTemporaryFile()
     pdx.to_avro(tf.name, dataframe)
     expect = pdx.from_avro(tf.name)
-    expect['DateTime64'] = expect['DateTime64'].apply(lambda t: t.tz_localize(None))
+    process_datetime64_column(expect)
     assert_frame_equal(expect, dataframe)
 
 
@@ -149,7 +153,7 @@ def test_append(dataframe):
     pdx.to_avro(tf.name, dataframe[0:int(dataframe.shape[0] / 2)])
     pdx.to_avro(tf.name, dataframe[int(dataframe.shape[0] / 2):], append=True)
     expect = pdx.from_avro(tf.name)
-    expect['DateTime64'] = expect['DateTime64'].apply(lambda t: t.tz_localize(None))
+    process_datetime64_column(expect)
     assert_frame_equal(expect, dataframe)
 
 
@@ -168,14 +172,20 @@ def test_dataframe_kwargs(dataframe):
     # exclude columns
     columns = ['String', 'Boolean']
     expect = pdx.read_avro(tf.name, exclude=columns)
-    expect['DateTime64'] = expect['DateTime64'].apply(lambda t: t.tz_localize(None))
+    process_datetime64_column(expect)
     df = dataframe.drop(columns, axis=1)
     assert_frame_equal(expect, df)
     # specify index
     index = 'String'
     expect = pdx.read_avro(tf.name, index=index)
-    expect['DateTime64'] = expect['DateTime64'].apply(lambda t: t.tz_localize(None))
+    process_datetime64_column(expect)
     df = dataframe.set_index(index)
+    assert_frame_equal(expect, df)
+    # specify nrows + exclude columns
+    columns = ['String', 'Boolean']
+    expect = pdx.read_avro(tf.name, exclude=columns, nrows=3)
+    process_datetime64_column(expect)
+    df = dataframe.drop(columns, axis=1).head(3)
     assert_frame_equal(expect, df)
 
 
