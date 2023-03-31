@@ -1,10 +1,16 @@
 from setuptools import setup
 from setuptools import find_packages
 
+from pathlib import Path
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
+
 setup(
     name='pandavro',
     version='1.7.2',
     description='The interface between Avro and pandas DataFrame',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     url='https://github.com/ynqa/pandavro',
     author='Makoto Ito',
     author_email='un.pensiero.vano@gmail.com',
