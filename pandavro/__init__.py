@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from pathlib import Path
-from typing import Optional, Iterable
+from typing import Iterable, Optional
 
 import fastavro
 import numpy as np
@@ -184,15 +184,39 @@ def schema_infer(df, times_as_micros=True):
     return schema
 
 
-def __file_to_dataframe(f, schema, na_dtypes=False, columns: Optional[Iterable[str]] = None, **kwargs):
+def __file_to_dataframe(
+    f,
+    schema,
+    na_dtypes=False,
+    columns: Optional[Iterable[str]] = None,
+    exclude: Optional[Iterable[str]] = None,
+    nrows: Optional[int] = None,
+    **kwargs,
+):
     reader = fastavro.reader(f, reader_schema=schema)
-    if columns is None:
-        records = list(reader)
-    # To free up some RAM we can select a subset of columns
-    else:
-        columns_set = frozenset(columns)
-        records = [{k: v for k, v in row.items() if k in columns_set} for row in reader]
+    columns_to_include = frozenset(columns) if columns else set()
+    columns_to_exclude = frozenset(exclude) if exclude else set()
 
+    records = []
+    for row_idx, row in enumerate(reader):
+
+        # stop if we reached nrows
+        if nrows and row_idx == nrows:
+            break
+
+        # include if columns_to_include not defined OR column in columns_to_include
+        # AND
+        # remove if columns_to_exclude not defined OR column in columns_to_exclude
+        records.append(
+            {
+                column: column_value
+                for column, column_value in row.items()
+                if len(columns_to_include) == 0 or column in columns_to_include
+                if len(columns_to_exclude) == 0 or column not in columns_to_exclude
+            }
+        )
+
+    # add columns again to indicate the order of the resulting dataframe
     df = pd.DataFrame.from_records(records, columns=columns, **kwargs)
 
     def _filter(typelist):
@@ -284,9 +308,9 @@ def __preprocess_dicts(l):
             if v is pd.NA:
                 d[k] = None
             # Convert some Pandas dtypes to normal Python dtypes
-            for key, value in PANDAS_TO_PYTHON_TYPES.items():
-                if isinstance(v, key):
-                    d[k] = value(v)
+            for pandas_type, converter in PANDAS_TO_PYTHON_TYPES.items():
+                if isinstance(v, pandas_type):
+                    d[k] = converter(v)
     return l
 
 
