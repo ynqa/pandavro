@@ -1,6 +1,6 @@
 # pandavro
 
-[![Build Status](https://travis-ci.org/ynqa/pandavro.svg?branch=master)](https://travis-ci.org/ynqa/pandavro)
+[![Python package](https://github.com/ynqa/pandavro/actions/workflows/python-package.yml/badge.svg)](https://github.com/ynqa/pandavro/actions/workflows/python-package.yml)
 
 The interface between Apache Avro and pandas DataFrame.
 
