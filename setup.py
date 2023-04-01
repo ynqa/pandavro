@@ -18,7 +18,7 @@ setup(
     packages=find_packages(exclude=['example']),
     install_requires=[
         # fixed versions.
-        'fastavro~=1.5.1',
+        'fastavro~=1.7.3',
         'pandas>=1.1',
         # https://pandas.pydata.org/pandas-docs/version/1.1/getting_started/install.html#dependencies
         'numpy>=1.15.4',
