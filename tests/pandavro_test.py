@@ -7,7 +7,13 @@ from tempfile import NamedTemporaryFile
 import numpy as np
 import pandas as pd
 import pytest
-from pandas.util.testing import assert_frame_equal
+
+try:
+    # pandas >2.0
+    from pandas.testing import assert_frame_equal
+except ImportError:
+    # previous version of pandas
+    from pandas.util.testing import assert_frame_equal
 
 import pandavro as pdx
 
