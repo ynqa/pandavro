@@ -18,14 +18,14 @@ setup(
     packages=find_packages(exclude=['example']),
     install_requires=[
         # fixed versions.
-        'fastavro~=1.5.1',
+        'fastavro>=1.5.1,<2.0.0',
         'pandas>=1.1',
         # https://pandas.pydata.org/pandas-docs/version/1.1/getting_started/install.html#dependencies
         'numpy>=1.15.4',
     ],
     extras_require={
-        'tests': ['pytest==7.1.2'],
+        'tests': ['pytest==7.3.2', 'tox==4.6.0'],
     },
     # https://pandas.pydata.org/pandas-docs/version/1.1/getting_started/install.html#python-version-support
-    python_requires='>=3.6.1',
+    python_requires='>=3.7.0',
 )
