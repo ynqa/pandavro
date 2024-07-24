@@ -37,7 +37,7 @@ Pandavro can handle these primitive types:
 | np.bool_                                      | boolean             |
 | np.float32                                    | float               |
 | np.float64                                    | double              |
-| np.unicode_                                   | string              |
+| np.str_                                       | string              |
 | np.object_                                    | string              |
 | np.int8, np.int16, np.int32                   | int                 |
 | np.uint8, np.uint16, np.uint32                | "unsigned" int*     |
