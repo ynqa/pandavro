@@ -20,7 +20,7 @@ setup(
         # fixed versions.
         'fastavro>=1.5.1,<2.0.0',
         'pandas>=2.0,<3.0.0',
-        'numpy>=2.0',
+        'numpy>=2.0,<3.0.0',
     ],
     extras_require={
         'tests': ['pytest==7.3.2', 'tox==4.6.0'],
