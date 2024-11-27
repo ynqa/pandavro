@@ -19,7 +19,7 @@ NUMPY_TO_AVRO_TYPES = {
     np.int64: 'long',
     np.uint64: {'type': 'long', 'unsigned': True},
     np.dtype('O'): 'complex',  # FIXME: Don't automatically store objects as strings
-    np.unicode_: 'string',
+    np.str_: 'string',
     np.float32: 'float',
     np.float64: 'double',
     np.datetime64: {'type': 'long', 'logicalType': 'timestamp-micros'},
