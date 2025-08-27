@@ -7,7 +7,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name='pandavro',
-    version='1.8.0',
+    version='1.9.0',
     description='The interface between Avro and pandas DataFrame',
     long_description=long_description,
     long_description_content_type='text/markdown',
